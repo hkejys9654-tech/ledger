@@ -53,14 +53,23 @@
 
       // --- CONSTANTS ---
       const FIXED_LABELS = {
-        loanInterest: '🏦 대출이자', maintenance: '🏢 관리비', gas: '🔥 도시가스',
-        commJiSeung: '📱 통신비(지승)', commGaYoung: '📱 통신비(가영)', commInternet: '🌐 인터넷',
-        insJiSeung: '🛡️ 보험(지승)', insGaYoung: '🛡️ 보험(가영)', insEunWoo: '👶 보험(은우)', insSeonWoo: '👶 보험(선우)',
-        church: '⛪ 교회', allowance: '💸 용돈', savings: '🐖 적금',
+        loanInterest: '🏦 대출이자', 
+        maintenance: '🏢 관리비', 
+        gas: '🔥 도시가스',
+        commJiSeung: '📱 통신비(지승)', 
+        commGaYoung: '📱 통신비(가영)', 
+        commInternet: '🌐 인터넷',
+        insJiSeung: '🛡️ 보험(지승)', 
+        insGaYoung: '🛡️ 보험(가영)', 
+        insEunWoo: '👶 보험(은우)', 
+        insSeonWoo: '👶 보험(선우)',
+        church: '⛪ 교회회비', 
+        allowance: '💸 용돈', 
+        savings: '🐖 적금',
       };
       
-      const PAYMENT_METHODS = ['현금', '체크카드', '롯데카드', '현대카드', '신한카드', '삼성카드', '우리카드', '국민카드', '농협카드'];
-      const CATEGORIES = ['식비', '외식비', '생활비'];
+      const PAYMENT_METHODS = ['롯데카드', '현대카드', '신한카드', '체크카드', '현금'];
+      const CATEGORIES = ['식비', '외식비', '생활비', '기타현금지출'];
 
       // --- UTILS ---
       const addMonths = (dateStr, months) => {
@@ -74,13 +83,16 @@
       };
 
       // --- DB SERVICE ---
-      const DB_NAME = 'GarongLedger_v10_Final'; 
+      const DB_NAME = 'GarongLedger_v11_Final'; 
       const DB_VERSION = 1;
 
       const createInitialSheet = (date) => ({
         date,
         incomes: { main: 0, other: 0, meal: 0, overtime: 0, additional: [] },
-        fixedExpenses: Object.keys(FIXED_LABELS).reduce((acc, key) => ({ ...acc, [key]: { amount: 0, method: '현금' } }), {}),
+        fixedExpenses: Object.keys(FIXED_LABELS).reduce((acc, key) => ({ 
+          ...acc, 
+          [key]: { amount: 0, method: '현금' } 
+        }), {}),
       });
 
       const dbPromise = new Promise((resolve, reject) => {
@@ -189,30 +201,37 @@
             const add = (s.incomes.additional || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
             return acc + basic + add;
         }, 0);
+        
         const mFixed = monthSheets.reduce((acc, s) => acc + Object.values(s.fixedExpenses).reduce((sum, v) => sum + v.amount, 0), 0);
         const mActual = monthTransactions.reduce((acc, t) => acc + t.amount, 0);
         const mBalance = mIncome - mFixed - mActual;
+        const mUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
+
+        // Stats by Payment Method (Fixed + Transactions)
+        const methodStats = PAYMENT_METHODS.reduce((acc, method) => {
+          const fixedPart = monthSheets.reduce((sum, s) => {
+             return sum + Object.values(s.fixedExpenses).filter(v => v.method === method).reduce((vSum, v) => vSum + v.amount, 0);
+          }, 0);
+          const transPart = monthTransactions.filter(t => t.paymentMethod === method).reduce((sum, t) => sum + t.amount, 0);
+          acc[method] = fixedPart + transPart;
+          return acc;
+        }, {});
 
         // Year Stats
         const yearSheets = allSheets.filter(s => s.date.startsWith(currentYear));
         const yearTransactions = allTransactions.filter(t => t.date.startsWith(currentYear));
-
-        const yIncome = yearSheets.reduce((acc, s) => {
-            const basic = s.incomes.main + s.incomes.other + s.incomes.meal + s.incomes.overtime;
-            const add = (s.incomes.additional || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-            return acc + basic + add;
-        }, 0);
+        const yIncome = yearSheets.reduce((acc, s) => acc + s.incomes.main + s.incomes.other + s.incomes.meal + s.incomes.overtime + (s.incomes.additional || []).reduce((sum, i) => sum + (Number(i.amount)||0), 0), 0);
         const yFixed = yearSheets.reduce((acc, s) => acc + Object.values(s.fixedExpenses).reduce((sum, v) => sum + v.amount, 0), 0);
         const yActual = yearTransactions.reduce((acc, t) => acc + t.amount, 0);
         const yBalance = yIncome - yFixed - yActual;
 
         return (
           <div className="space-y-6 animate-fade-in pb-24">
-            {/* Monthly Card */}
+            {/* Monthly Balance Card */}
             <div className="bg-gradient-to-br from-purple-800 to-indigo-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                <div className="absolute -top-4 -right-4 opacity-10"><i className="fa-solid fa-calendar-check text-9xl"></i></div>
                <div className="relative z-10">
-                 <h2 className="text-indigo-200 text-xs font-bold uppercase tracking-wider">{currentMonth}월 잔액</h2>
+                 <h2 className="text-indigo-200 text-xs font-bold uppercase tracking-wider">{currentMonth}월 총 잔액</h2>
                  <h1 className="text-4xl font-black mt-1">{formatMoney(mBalance)}</h1>
                </div>
                <div className="mt-8 grid grid-cols-2 gap-3 relative z-10">
@@ -227,25 +246,35 @@
                </div>
             </div>
 
-            {/* Annual Card */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden">
-               <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-slate-800 font-black text-lg flex items-center gap-2"><i className="fa-solid fa-chart-line text-purple-500"></i> {currentYear}년 누적 결산</h3>
-                  <span className="text-[10px] bg-purple-50 text-purple-600 px-2 py-1 rounded-full font-bold">ANNUAL STATS</span>
+            {/* Stats by Payment Method */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+               <h3 className="text-slate-800 font-black text-lg mb-4 flex items-center gap-2"><i className="fa-solid fa-credit-card text-purple-500"></i> 결제 수단별 통계</h3>
+               <div className="space-y-3">
+                  {PAYMENT_METHODS.map(m => (
+                    <div key={m} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                      <span className="text-slate-500 text-xs font-bold">{m}</span>
+                      <span className="font-black text-slate-800">{formatMoney(methodStats[m] || 0)}</span>
+                    </div>
+                  ))}
                </div>
-               <div className="space-y-4">
+               <div className="mt-4 pt-4 border-t border-dashed border-slate-200 flex justify-between items-center px-1">
+                  <span className="text-red-500 text-xs font-black">불필요한 지출 총액 ⚠️</span>
+                  <span className="text-red-600 font-black text-lg">{formatMoney(mUnnecessary)}</span>
+               </div>
+            </div>
+
+            {/* Annual Stats Summary */}
+            <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl">
+               <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-black text-sm uppercase tracking-widest text-indigo-300">{currentYear}년 누적 요약</h3>
+                  <span className="text-[10px] bg-indigo-500 text-white px-2 py-0.5 rounded font-black">YEARLY</span>
+               </div>
+               <div className="flex justify-between items-end">
                   <div>
-                    <div className="flex justify-between text-xs text-slate-400 mb-1 font-bold"><span>누적 수입</span><span>{formatMoney(yIncome)}</span></div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden"><div className="bg-emerald-400 h-full" style={{width: '100%'}}></div></div>
+                    <div className="text-[10px] text-slate-400 font-bold mb-1">올해 순수익 현황</div>
+                    <div className="text-2xl font-black">{formatMoney(yBalance)}</div>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-xs text-slate-400 mb-1 font-bold"><span>누적 지출</span><span>{formatMoney(yFixed + yActual)}</span></div>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden"><div className="bg-red-400 h-full" style={{width: `${Math.min(100, ((yFixed + yActual)/yIncome)*100)}%`}}></div></div>
-                  </div>
-                  <div className="pt-2 mt-2 border-t border-dashed border-slate-100 flex justify-between items-end">
-                    <span className="text-sm font-bold text-slate-600">올해 순수익</span>
-                    <span className={`text-xl font-black ${yBalance >= 0 ? 'text-purple-600' : 'text-red-500'}`}>{formatMoney(yBalance)}</span>
-                  </div>
+                  <i className="fa-solid fa-chart-line text-indigo-500 text-2xl opacity-50 mb-1"></i>
                </div>
             </div>
           </div>
@@ -258,7 +287,9 @@
 
         useEffect(() => { setTempSheet(sheet); }, [sheet]);
 
-        const todayActual = transactions.filter(t => t.date === selectedDate).reduce((sum, t) => sum + t.amount, 0);
+        const insuranceSum = Object.keys(tempSheet.fixedExpenses)
+          .filter(k => k.startsWith('ins'))
+          .reduce((sum, k) => sum + tempSheet.fixedExpenses[k].amount, 0);
 
         const handleChange = (section, key, field, value) => {
           setTempSheet(prev => {
@@ -300,80 +331,97 @@
           }));
         };
 
-        const renderInput = (label, val, section, key) => (
-          <div className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
-            <label className="text-slate-600 text-sm font-medium">{label}</label>
-            <input type="number" value={val === 0 ? '' : val} placeholder="0" disabled={!isEditing}
-              onChange={(e) => handleChange(section, key, null, e.target.value)}
-              className="text-right p-2 rounded-lg bg-transparent w-32 font-bold text-slate-800 outline-none focus:bg-slate-50 transition-colors" />
+        const renderFixedRow = (k, label) => (
+          <div key={k} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+            <span className="text-slate-700 font-bold text-xs w-1/3 truncate">{label}</span>
+            <div className="flex gap-2 flex-1 justify-end">
+              <input type="number" value={tempSheet.fixedExpenses[k].amount === 0 ? '' : tempSheet.fixedExpenses[k].amount} placeholder="0" disabled={!isEditing}
+                onChange={(e) => handleChange('fixedExpenses', k, 'amount', e.target.value)}
+                className="w-24 text-right p-1 rounded-lg text-sm bg-transparent font-black focus:bg-slate-50 outline-none transition-colors"/>
+              <select value={tempSheet.fixedExpenses[k].method} disabled={!isEditing}
+                onChange={(e) => handleChange('fixedExpenses', k, 'method', e.target.value)}
+                className={`w-20 text-[10px] p-1 rounded-lg bg-transparent outline-none text-right font-black ${!isEditing ? 'appearance-none' : 'bg-slate-100'}`}>
+                {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
           </div>
         );
 
         return (
           <div className="space-y-6 animate-fade-in pb-24">
             <div className="flex justify-between items-center px-1">
-               <div><h2 className="text-xl font-black text-slate-800 tracking-tight">예산 설정</h2><p className="text-[10px] text-purple-500 font-black mt-1 uppercase tracking-widest">Budgeting: {sheet.date}</p></div>
+               <div>
+                  <h2 className="text-xl font-black text-slate-800">고정예산 설정</h2>
+                  <p className="text-[10px] text-purple-500 font-black mt-1 uppercase tracking-widest">날짜: {sheet.date}</p>
+               </div>
                <div className="flex gap-2">
                  {isEditing ? (
                    <><button onClick={() => { setIsEditing(false); setTempSheet(sheet); }} className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold">취소</button>
-                   <button onClick={() => { onSave(tempSheet); setIsEditing(false); }} className="px-3 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-200">저장</button></>
+                   <button onClick={() => { onSave(tempSheet); setIsEditing(false); }} className="px-3 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold shadow-lg">저장</button></>
                  ) : (
-                   <button onClick={() => setIsEditing(true)} className="px-3 py-2 bg-white border border-purple-100 text-purple-600 rounded-xl text-xs font-bold shadow-sm">수정하기</button>
+                   <button onClick={() => setIsEditing(true)} className="px-3 py-2 bg-white border border-purple-100 text-purple-600 rounded-xl text-xs font-bold">수정하기</button>
                  )}
                </div>
             </div>
 
+            {/* Income Section */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-               <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-coins"></i> Monthly Income</h3>
-               {renderInput('💰 주수입', tempSheet.incomes.main, 'incomes', 'main')}
-               {renderInput('🎁 기타수입', tempSheet.incomes.other, 'incomes', 'other')}
-               {renderInput('🍚 정액급식비', tempSheet.incomes.meal, 'incomes', 'meal')}
-               {renderInput('⏰ 초과수당', tempSheet.incomes.overtime, 'incomes', 'overtime')}
-               
+               <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-hand-holding-dollar"></i> 수입 예산</h3>
+               <div className="space-y-1">
+                  {[['💰 주수입', 'main'], ['🎁 기타수입', 'other'], ['🍚 정액급식비', 'meal'], ['⏰ 초과수당', 'overtime']].map(([l, k]) => (
+                    <div key={k} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+                      <label className="text-slate-600 text-xs font-bold">{l}</label>
+                      <input type="number" value={tempSheet.incomes[k] === 0 ? '' : tempSheet.incomes[k]} placeholder="0" disabled={!isEditing}
+                        onChange={(e) => handleChange('incomes', k, null, e.target.value)}
+                        className="text-right p-2 rounded-lg bg-transparent w-32 font-black text-slate-800 outline-none focus:bg-slate-50" />
+                    </div>
+                  ))}
+               </div>
                {/* Additional Dynamic Incomes */}
                <div className="mt-4 pt-4 border-t border-slate-50 space-y-2">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">기타 추가 항목</span>
-                    {isEditing && <button onClick={addIncomeItem} className="text-[10px] bg-purple-50 text-purple-600 px-2 py-1 rounded-lg font-bold">+ 항목 추가</button>}
+                    <span className="text-[10px] font-black text-slate-400 uppercase">기타 수입 항목</span>
+                    {isEditing && <button onClick={addIncomeItem} className="text-[9px] bg-purple-50 text-purple-600 px-2 py-1 rounded-lg font-black">+ 추가</button>}
                   </div>
                   {tempSheet.incomes.additional.map(item => (
-                    <div key={item.id} className="flex gap-2 items-center group animate-fade-in">
-                       <input type="text" value={item.desc} placeholder="항목명" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'desc', e.target.value)}
-                         className="flex-1 p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-100" />
+                    <div key={item.id} className="flex gap-2 items-center animate-fade-in">
+                       <input type="text" value={item.desc} placeholder="항목" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'desc', e.target.value)}
+                         className="flex-1 p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none" />
                        <input type="number" value={item.amount === 0 ? '' : item.amount} placeholder="0" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'amount', e.target.value)}
-                         className="w-24 p-2 bg-slate-50 rounded-xl text-xs font-bold text-right outline-none focus:ring-2 focus:ring-purple-100" />
-                       {isEditing && <button onClick={() => removeIncomeItem(item.id)} className="text-red-400 group-hover:text-red-600"><i className="fa-solid fa-circle-minus"></i></button>}
+                         className="w-24 p-2 bg-slate-50 rounded-xl text-xs font-bold text-right outline-none" />
+                       {isEditing && <button onClick={() => removeIncomeItem(item.id)} className="text-red-400"><i className="fa-solid fa-circle-minus"></i></button>}
                     </div>
                   ))}
-                  {tempSheet.incomes.additional.length === 0 && <div className="text-[10px] text-slate-300 text-center py-2">추가된 기타 수입이 없습니다.</div>}
                </div>
             </div>
 
+            {/* Fixed Expenses Section */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-               <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-receipt"></i> Fixed Expenses</h3>
-               {Object.entries(FIXED_LABELS).map(([k, l]) => (
-                 <div key={k} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
-                   <span className="text-slate-700 font-medium text-xs w-1/3 truncate">{l}</span>
-                   <div className="flex gap-2 flex-1 justify-end">
-                     <input type="number" value={tempSheet.fixedExpenses[k].amount === 0 ? '' : tempSheet.fixedExpenses[k].amount} placeholder="0" disabled={!isEditing}
-                       onChange={(e) => handleChange('fixedExpenses', k, 'amount', e.target.value)}
-                       className="w-24 text-right p-1 rounded text-sm bg-transparent font-bold focus:bg-slate-50 outline-none"/>
-                     <select value={tempSheet.fixedExpenses[k].method} disabled={!isEditing}
-                       onChange={(e) => handleChange('fixedExpenses', k, 'method', e.target.value)}
-                       className={`w-20 text-[10px] p-1 rounded bg-transparent outline-none text-right font-bold ${!isEditing ? 'appearance-none' : 'bg-slate-50'}`}>
-                       {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                     </select>
-                   </div>
-                 </div>
-               ))}
-            </div>
-
-            <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl flex justify-between items-center">
-                <div>
-                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Total Actual Expense</div>
-                    <div className="text-xs text-slate-500">오늘 실제 지출 합계</div>
-                </div>
-                <span className="text-3xl font-black">{formatMoney(todayActual)}</span>
+               <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-receipt"></i> 고정 지출 (세부)</h3>
+               <div className="space-y-1">
+                  {renderFixedRow('loanInterest', '🏦 대출이자')}
+                  {renderFixedRow('maintenance', '🏢 관리비')}
+                  {renderFixedRow('gas', '🔥 도시가스')}
+                  {renderFixedRow('church', '⛪ 교회회비')}
+                  {renderFixedRow('allowance', '💸 용돈')}
+                  {renderFixedRow('savings', '🐖 적금')}
+                  <div className="h-4"></div>
+                  <div className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest px-1">통신비</div>
+                  {renderFixedRow('commJiSeung', '📱 지승')}
+                  {renderFixedRow('commGaYoung', '📱 가영')}
+                  {renderFixedRow('commInternet', '🌐 인터넷')}
+                  <div className="h-4"></div>
+                  <div className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest px-1">보험료</div>
+                  {renderFixedRow('insJiSeung', '🛡️ 지승')}
+                  {renderFixedRow('insGaYoung', '🛡️ 가영')}
+                  {renderFixedRow('insEunWoo', '👶 은우')}
+                  {renderFixedRow('insSeonWoo', '👶 선우')}
+               </div>
+               {/* Insurance Total Bar */}
+               <div className="mt-4 p-4 bg-indigo-50 rounded-2xl flex justify-between items-center border border-indigo-100">
+                  <span className="text-xs font-black text-indigo-600">보험료 합계</span>
+                  <span className="font-black text-indigo-700">{formatMoney(insuranceSum)}</span>
+               </div>
             </div>
           </div>
         );
@@ -396,22 +444,22 @@
         const unnecessaryTotal = filtered.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
 
         return (
-          <div className="space-y-4 animate-fade-in pb-36">
+          <div className="space-y-4 animate-fade-in pb-40">
              <div className="sticky top-0 bg-[#f3f4f6] pt-2 pb-2 z-30 space-y-3">
                 <div className="flex bg-slate-200/50 p-1 rounded-2xl shadow-inner">
-                   <button onClick={() => setViewMode('daily')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 ({selectedDate})</button>
-                   <button onClick={() => setViewMode('monthly')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별</button>
+                   <button onClick={() => setViewMode('daily')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 내역</button>
+                   <button onClick={() => setViewMode('monthly')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별 전체</button>
                 </div>
                 <div className="relative">
                    <i className="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
-                   <input type="text" placeholder="지출 내역 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                   <input type="text" placeholder="지출 항목이나 분류 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                      className="w-full pl-10 pr-4 py-3.5 rounded-2xl border-none shadow-sm bg-white focus:ring-2 focus:ring-purple-200 outline-none font-medium" />
                 </div>
              </div>
 
              <div className="space-y-3 min-h-[300px]">
                 {filtered.length === 0 ? (
-                    <div className="text-center py-24 text-slate-400"><i className="fa-solid fa-receipt text-3xl mb-3 block opacity-20"></i>내역이 없습니다.</div>
+                    <div className="text-center py-24 text-slate-400"><i className="fa-solid fa-receipt text-3xl mb-3 block opacity-20"></i>지출 내역이 없습니다.</div>
                 ) : (
                     filtered.map(tx => (
                         <div key={tx.id} className={`bg-white px-4 py-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 transition-all active:scale-[0.98] ${tx.isUnnecessary ? 'bg-red-50/40 border-red-100' : ''}`}>
@@ -422,11 +470,11 @@
                             <div className="flex-1 min-w-0" onClick={() => onEdit(tx)}>
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-[10px] font-black text-slate-400">{tx.date.slice(5)}</span>
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':'bg-emerald-50 text-emerald-600'}`}>{tx.category}</span>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':tx.category==='생활비'?'bg-emerald-50 text-emerald-600':'bg-slate-100 text-slate-600'}`}>{tx.category}</span>
                                     {tx.isInstallment && <span className="text-[9px] px-1 bg-purple-50 text-purple-500 rounded font-black italic border border-purple-100">할부</span>}
                                 </div>
                                 <div className="font-bold text-slate-800 text-sm truncate">{tx.desc}</div>
-                                <div className="text-[10px] text-slate-400 font-medium">{tx.paymentMethod}</div>
+                                <div className="text-[10px] text-slate-400 font-bold">{tx.paymentMethod}</div>
                             </div>
                             
                             <div className="text-right flex flex-col items-end gap-1">
@@ -440,11 +488,11 @@
                 )}
              </div>
 
-             {/* Footer Totals */}
+             {/* Sticky Footer Totals Bar */}
              <div className="fixed bottom-[92px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none">
                 <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-3xl shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
                     <div className="flex-1">
-                        <div className="text-[10px] text-slate-500 font-black mb-1 uppercase tracking-widest">총 지출 합계</div>
+                        <div className="text-[10px] text-slate-500 font-black mb-1 uppercase tracking-widest">변동지출 합계</div>
                         <div className="text-lg font-black text-white">{formatMoney(total)}</div>
                     </div>
                     <div className="w-px bg-white/10"></div>
@@ -461,15 +509,16 @@
       const Settings = ({ onBackup, onRestore, onReset }) => (
         <div className="space-y-6 animate-fade-in pb-24">
            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-              <h3 className="text-slate-800 font-black text-lg mb-6">데이터 관리 도구</h3>
+              <h3 className="text-slate-800 font-black text-lg mb-6">데이터 관리</h3>
               <div className="grid grid-cols-1 gap-3">
-                 <button onClick={onBackup} className="w-full flex justify-between items-center p-4 bg-purple-50 text-purple-700 rounded-2xl font-black text-sm active:scale-95 transition-transform"><span><i className="fa-solid fa-download mr-3"></i> 데이터 백업 (복사)</span><i className="fa-solid fa-chevron-right opacity-30"></i></button>
-                 <button onClick={onRestore} className="w-full flex justify-between items-center p-4 bg-slate-50 text-slate-700 rounded-2xl font-black text-sm active:scale-95 transition-transform"><span><i className="fa-solid fa-upload mr-3"></i> 데이터 복구 (붙여넣기)</span><i className="fa-solid fa-chevron-right opacity-30"></i></button>
+                 <button onClick={onBackup} className="w-full flex justify-between items-center p-4 bg-purple-50 text-purple-700 rounded-2xl font-black text-sm active:scale-95 transition-transform"><span><i className="fa-solid fa-download mr-3"></i> 데이터 백업</span><i className="fa-solid fa-chevron-right opacity-30"></i></button>
+                 <button onClick={onRestore} className="w-full flex justify-between items-center p-4 bg-slate-50 text-slate-700 rounded-2xl font-black text-sm active:scale-95 transition-transform"><span><i className="fa-solid fa-upload mr-3"></i> 데이터 복구</span><i className="fa-solid fa-chevron-right opacity-30"></i></button>
                  <div className="pt-4 mt-2 border-t border-slate-50">
-                    <button onClick={onReset} className="w-full flex justify-between items-center p-4 bg-red-50 text-red-600 rounded-2xl font-black text-sm active:scale-95 transition-transform"><span><i className="fa-solid fa-trash-can mr-3"></i> 전체 데이터 초기화</span><i className="fa-solid fa-triangle-exclamation opacity-30"></i></button>
+                    <button onClick={onReset} className="w-full flex justify-between items-center p-4 bg-red-50 text-red-600 rounded-2xl font-black text-sm active:scale-95 transition-transform"><span><i className="fa-solid fa-trash-can mr-3"></i> 데이터 초기화</span><i className="fa-solid fa-triangle-exclamation opacity-30"></i></button>
                  </div>
               </div>
            </div>
+           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v11.0</div>
         </div>
       );
 
@@ -567,7 +616,7 @@
         return (
           <div className="max-w-md mx-auto min-h-screen bg-[#f3f4f6] shadow-2xl overflow-hidden flex flex-col relative font-sans">
              <header className="bg-white px-6 py-5 flex justify-between items-center sticky top-0 z-30 shadow-sm border-b border-slate-50">
-                <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 cursor-pointer tracking-tighter" onClick={() => window.location.reload()}>Garong's Ledger</h1>
+                <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 tracking-tighter" onClick={() => window.location.reload()}>Garong's Ledger</h1>
                 <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="text-[11px] font-black bg-slate-100 px-3 py-2 rounded-xl border-none outline-none text-slate-700" />
              </header>
 
@@ -575,14 +624,14 @@
                 {tab === 'dashboard' && <Dashboard allSheets={allData.sheets} allTransactions={allData.transactions} currentMonth={currentMonth} selectedDate={selectedDate} />}
                 {tab === 'planner' && <Planner sheet={daySheet} onSave={handleSaveSheet} transactions={allData.transactions} selectedDate={selectedDate} />}
                 {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} />}
-                {tab === 'settings' && <Settings onBackup={async () => { const data = await dbOps.getAllData(); await navigator.clipboard.writeText(JSON.stringify(data)); alert("데이터가 클립보드에 복사되었습니다!"); }} onRestore={() => setIsRestoreModalOpen(true)} onReset={async () => { if(confirm("정말 모든 데이터를 삭제하시겠습니까?")) { await dbOps.clearAll(); window.location.reload(); } }} />}
+                {tab === 'settings' && <Settings onBackup={async () => { const data = await dbOps.getAllData(); await navigator.clipboard.writeText(JSON.stringify(data)); alert("백업 데이터가 클립보드에 복사되었습니다!"); }} onRestore={() => setIsRestoreModalOpen(true)} onReset={async () => { if(confirm("모든 데이터를 영구적으로 삭제하시겠습니까?")) { await dbOps.clearAll(); window.location.reload(); } }} />}
              </main>
 
              <nav className="bg-white border-t border-slate-100 flex justify-around items-center py-4 pb-safe sticky bottom-0 z-40">
                 {['dashboard', 'planner', 'ledger', 'settings'].map(t => (
                     <button key={t} onClick={() => setTab(t)} className={`nav-btn flex flex-col items-center w-16 transition-all ${tab === t ? 'text-purple-600' : 'text-slate-300'}`}>
                         <i className={`fa-solid ${t==='dashboard'?'fa-house-chimney':t==='planner'?'fa-piggy-bank':t==='ledger'?'fa-receipt':'fa-screwdriver-wrench'} text-xl mb-1 ${tab===t?'animate-bounce-sm':''}`}></i>
-                        <span className="text-[9px] font-black uppercase tracking-tighter">{t==='dashboard'?'대시보드':t==='planner'?'예산계획':t==='ledger'?'지출내역':'시스템설정'}</span>
+                        <span className="text-[9px] font-black uppercase tracking-tighter">{t==='dashboard'?'대시보드':t==='planner'?'고정예산':t==='ledger'?'변동지출':'시스템'}</span>
                     </button>
                 ))}
              </nav>
@@ -593,36 +642,36 @@
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center animate-fade-in">
                    <div className="bg-white w-full sm:w-[400px] rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl relative">
                       <div className="flex justify-between items-center mb-8">
-                         <h3 className="text-2xl font-black text-slate-800 tracking-tight">{editingTx ? '기록 수정' : '새 지출 기록'}</h3>
+                         <h3 className="text-2xl font-black text-slate-800 tracking-tight">{editingTx ? '변동지출 수정' : '새 변동지출 기록'}</h3>
                          <button onClick={() => setIsAddModalOpen(false)} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400"><i className="fa-solid fa-xmark"></i></button>
                       </div>
                       <form onSubmit={handleAddTransaction} className="space-y-5">
                          <input type="hidden" name="txId" defaultValue={editingTx?.id} />
                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">Date</label>
-                            <input type="date" name="date" defaultValue={editingTx?.date || selectedDate} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700 focus:ring-2 focus:ring-purple-100" />
+                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Date</label>
+                            <input type="date" name="date" defaultValue={editingTx?.date || selectedDate} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700" />
                          </div>
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">Category</label>
-                                <select name="category" defaultValue={editingTx?.category || '식비'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-purple-100">
+                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Category</label>
+                                <select name="category" defaultValue={editingTx?.category || '식비'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
                                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">Method</label>
-                                <select name="paymentMethod" defaultValue={editingTx?.paymentMethod || '체크카드'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-purple-100">
+                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Payment Method</label>
+                                <select name="paymentMethod" defaultValue={editingTx?.paymentMethod || '체크카드'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold">
                                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
                             </div>
                          </div>
                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">Detail Description</label>
-                            <input type="text" name="desc" placeholder="상세 항목을 입력하세요" defaultValue={editingTx?.desc} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-purple-100" />
+                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Description</label>
+                            <input type="text" name="desc" placeholder="내역을 입력하세요" defaultValue={editingTx?.desc} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold" />
                          </div>
                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">Amount</label>
-                            <input type="number" name="amount" placeholder="0" defaultValue={editingTx?.amount} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-xl text-purple-600 focus:ring-2 focus:ring-purple-100" />
+                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Amount</label>
+                            <input type="number" name="amount" placeholder="0" defaultValue={editingTx?.amount} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-xl text-purple-600" />
                          </div>
                          <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl">
                             <label className="flex items-center gap-2 cursor-pointer flex-1">
@@ -646,10 +695,10 @@
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6 animate-fade-in">
                    <div className="bg-white w-full max-w-md rounded-[32px] p-8 shadow-2xl">
                       <h3 className="text-xl font-black mb-6 flex items-center gap-2"><i className="fa-solid fa-cloud-arrow-up text-purple-500"></i> 데이터 복구</h3>
-                      <textarea className="w-full h-56 border border-slate-100 rounded-2xl p-4 text-[10px] bg-slate-50 outline-none resize-none font-mono text-slate-500" placeholder='여기에 백업 데이터를 붙여넣으세요' value={restoreText} onChange={e => setRestoreText(e.target.value)}></textarea>
+                      <textarea className="w-full h-56 border border-slate-100 rounded-2xl p-4 text-[10px] bg-slate-50 outline-none resize-none font-mono text-slate-500" placeholder='백업된 JSON 데이터를 붙여넣으세요' value={restoreText} onChange={e => setRestoreText(e.target.value)}></textarea>
                       <div className="flex gap-3 mt-6">
                          <button onClick={() => setIsRestoreModalOpen(false)} className="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-500">취소</button>
-                         <button onClick={async () => { try { await dbOps.restoreData(JSON.parse(restoreText)); alert("데이터 복구가 완료되었습니다!"); window.location.reload(); } catch(e){alert("잘못된 데이터 형식입니다.");} }} className="flex-1 py-4 bg-purple-600 text-white rounded-2xl font-black shadow-lg shadow-purple-100">복구하기</button>
+                         <button onClick={async () => { try { await dbOps.restoreData(JSON.parse(restoreText)); alert("데이터가 복구되었습니다!"); window.location.reload(); } catch(e){alert("데이터 형식이 올바르지 않습니다.");} }} className="flex-1 py-4 bg-purple-600 text-white rounded-2xl font-black">복구 실행</button>
                       </div>
                    </div>
                 </div>
@@ -661,11 +710,11 @@
                         <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500">
                             <i className="fa-solid fa-trash-can text-2xl"></i>
                         </div>
-                        <h3 className="text-xl font-black text-slate-800 mb-2 tracking-tight">항목 삭제 확인</h3>
-                        <p className="text-sm text-slate-400 mb-8 font-medium">이 지출 내역을 정말 삭제하시겠습니까?<br/>삭제 후에는 되돌릴 수 없습니다.</p>
+                        <h3 className="text-xl font-black text-slate-800 mb-2">삭제 확인</h3>
+                        <p className="text-sm text-slate-400 mb-8 font-medium">이 지출 항목을 삭제하시겠습니까?<br/>삭제 후에는 복구가 불가능합니다.</p>
                         <div className="flex gap-4">
                             <button onClick={() => setDeleteTargetId(null)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black">취소</button>
-                            <button onClick={confirmDelete} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black shadow-lg shadow-red-100">삭제하기</button>
+                            <button onClick={confirmDelete} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black">삭제하기</button>
                         </div>
                     </div>
                 </div>
