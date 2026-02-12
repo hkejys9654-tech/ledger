@@ -25,6 +25,25 @@
       @keyframes bounce-sm { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
       .modal-enter { animation: modalPop 0.2s ease-out forwards; }
       @keyframes modalPop { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+      
+      /* Custom Checkbox Style */
+      .custom-checkbox {
+        width: 22px;
+        height: 22px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .custom-checkbox.checked {
+        background-color: #ef4444;
+        border-color: #ef4444;
+        color: white;
+      }
     </style>
   </head>
   <body>
@@ -42,13 +61,14 @@
       };
       
       const PAYMENT_METHODS = ['현금', '체크카드', '롯데카드', '현대카드', '신한카드', '삼성카드', '우리카드', '국민카드', '농협카드'];
+      const CATEGORIES = ['식비', '외식비', '생활비'];
 
       // --- UTILS ---
       const addMonths = (dateStr, months) => {
         const [y, m, d] = dateStr.split('-').map(Number);
         const date = new Date(y, m - 1 + months, d);
         if (date.getDate() !== d) {
-             date.setDate(0); // Handle month overflow (e.g. Jan 31 -> Feb 28)
+             date.setDate(0);
         }
         const ny = date.getFullYear();
         const nm = String(date.getMonth() + 1).padStart(2, '0');
@@ -57,7 +77,7 @@
       };
 
       // --- DB SERVICE ---
-      const DB_NAME = 'GarongLedger_v8_Custom'; 
+      const DB_NAME = 'GarongLedger_v9_Custom'; 
       const DB_VERSION = 1;
 
       const createInitialSheet = (date) => ({
@@ -111,7 +131,6 @@
           return new Promise((resolve) => {
             const tx = db.transaction('transactions', 'readonly');
             const store = tx.objectStore('transactions');
-            // Safe approach: Get all and filter in JS to avoid index range issues
             const req = store.getAll();
             req.onsuccess = () => {
                 const all = req.result || [];
@@ -131,12 +150,21 @@
           });
         },
         deleteTransaction: async (id) => {
-          console.log("삭제 요청 ID (DB):", id);
           const db = await dbPromise;
           return new Promise((resolve, reject) => {
             const tx = db.transaction('transactions', 'readwrite');
             const store = tx.objectStore('transactions');
             store.delete(id);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+          });
+        },
+        updateTransaction: async (txData) => {
+          const db = await dbPromise;
+          return new Promise((resolve, reject) => {
+            const tx = db.transaction('transactions', 'readwrite');
+            const store = tx.objectStore('transactions');
+            store.put(txData);
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
           });
@@ -171,7 +199,6 @@
 
       // --- COMPONENTS ---
 
-      // 1. DASHBOARD
       const Dashboard = ({ monthSheets, monthTransactions, currentMonth }) => {
         const totalBudgetIncome = monthSheets.reduce((acc, s) => {
             const basic = s.incomes.main + s.incomes.other + s.incomes.meal + s.incomes.overtime;
@@ -181,6 +208,7 @@
         
         const totalBudgetFixed = monthSheets.reduce((acc, s) => acc + Object.values(s.fixedExpenses).reduce((sum, v) => sum + v.amount, 0), 0);
         const totalActualExpense = monthTransactions.reduce((acc, t) => acc + t.amount, 0);
+        const totalUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
         const remaining = totalBudgetIncome - totalBudgetFixed - totalActualExpense;
 
         return (
@@ -210,9 +238,13 @@
                     <span className="text-slate-500 text-sm">고정 지출 (예산)</span>
                     <span className="font-bold text-slate-700">{formatMoney(totalBudgetFixed)}</span>
                   </div>
+                  <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                    <span className="text-slate-500 text-sm">변동 지출 (실제)</span>
+                    <span className="font-bold text-slate-700">{formatMoney(totalActualExpense)}</span>
+                  </div>
                   <div className="flex justify-between items-center p-3 bg-red-50 rounded-xl border border-red-100">
-                    <span className="text-red-500 text-sm font-medium">변동 지출 (실제)</span>
-                    <span className="font-bold text-red-600">{formatMoney(totalActualExpense)}</span>
+                    <span className="text-red-500 text-sm font-medium">불필요한 지출 ⚠️</span>
+                    <span className="font-bold text-red-600">{formatMoney(totalUnnecessary)}</span>
                   </div>
                </div>
             </div>
@@ -220,15 +252,12 @@
         );
       };
 
-      // 2. PLANNER
       const Planner = ({ sheet, onSave, forceEditMode, transactions, selectedDate }) => {
         const [isEditing, setIsEditing] = useState(forceEditMode);
         const [tempSheet, setTempSheet] = useState(sheet);
 
         useEffect(() => {
-            if (sheet.date !== tempSheet.date) {
-                setTempSheet(sheet);
-            }
+            if (sheet.date !== tempSheet.date) setTempSheet(sheet);
             if (forceEditMode) setIsEditing(true);
         }, [sheet.date, forceEditMode]);
 
@@ -249,36 +278,6 @@
             }
             return next;
           });
-        };
-
-        const handleAddIncomeItem = () => {
-            setTempSheet(prev => ({
-                ...prev,
-                incomes: {
-                    ...prev.incomes,
-                    additional: [...(prev.incomes.additional || []), { id: Date.now(), desc: '', amount: 0 }]
-                }
-            }));
-        };
-
-        const handleAdditionalChange = (id, field, value) => {
-            setTempSheet(prev => ({
-                ...prev,
-                incomes: {
-                    ...prev.incomes,
-                    additional: prev.incomes.additional.map(item => item.id === id ? { ...item, [field]: field === 'amount' ? Number(value) : value } : item)
-                }
-            }));
-        };
-
-        const handleDeleteAdditional = (id) => {
-            setTempSheet(prev => ({
-                ...prev,
-                incomes: {
-                    ...prev.incomes,
-                    additional: prev.incomes.additional.filter(item => item.id !== id)
-                }
-            }));
         };
 
         const renderInput = (label, val, section, key) => (
@@ -310,24 +309,6 @@
                {renderInput('🎁 기타수입', tempSheet.incomes.other, 'incomes', 'other')}
                {renderInput('🍚 정액급식비', tempSheet.incomes.meal, 'incomes', 'meal')}
                {renderInput('⏰ 초과수당', tempSheet.incomes.overtime, 'incomes', 'overtime')}
-               
-               {/* Additional Incomes Section */}
-               <div className="mt-4 pt-4 border-t border-slate-100">
-                  <div className="mb-2 text-sm font-medium text-slate-500 flex justify-between items-center">
-                    <span>추가 수입</span>
-                    {isEditing && <button onClick={handleAddIncomeItem} className="text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded-md font-bold hover:bg-purple-100">+ 항목 추가</button>}
-                  </div>
-                  <div className="space-y-2">
-                    {tempSheet.incomes.additional && tempSheet.incomes.additional.map(item => (
-                        <div key={item.id} className="flex gap-2 items-center animate-fade-in">
-                            <input type="text" value={item.desc} placeholder="항목명" disabled={!isEditing} onChange={(e) => handleAdditionalChange(item.id, 'desc', e.target.value)} className="flex-1 p-2 bg-slate-50 rounded-lg text-sm outline-none focus:ring-1 focus:ring-purple-200" />
-                            <input type="number" value={item.amount === 0 ? '' : item.amount} placeholder="0" disabled={!isEditing} onChange={(e) => handleAdditionalChange(item.id, 'amount', e.target.value)} className="w-24 text-right p-2 bg-slate-50 rounded-lg text-sm font-bold outline-none focus:ring-1 focus:ring-purple-200" />
-                            {isEditing && <button type="button" onClick={() => handleDeleteAdditional(item.id)} className="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600"><i className="fa-solid fa-minus-circle"></i></button>}
-                        </div>
-                    ))}
-                    {(!tempSheet.incomes.additional || tempSheet.incomes.additional.length === 0) && <div className="text-xs text-slate-400 text-center py-2">추가된 수입 항목이 없습니다.</div>}
-                  </div>
-               </div>
             </div>
 
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
@@ -363,8 +344,7 @@
         );
       };
 
-      // 3. LEDGER
-      const Ledger = ({ transactions, selectedDate, onDelete, onEdit }) => {
+      const Ledger = ({ transactions, selectedDate, onDelete, onEdit, onToggleUnnecessary }) => {
         const [viewMode, setViewMode] = useState('daily');
         const [searchTerm, setSearchTerm] = useState('');
 
@@ -378,9 +358,10 @@
         ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         const total = filtered.reduce((acc, t) => acc + t.amount, 0);
+        const unnecessaryTotal = filtered.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
 
         return (
-          <div className="space-y-4 animate-fade-in pb-24">
+          <div className="space-y-4 animate-fade-in pb-32">
              <div className="sticky top-0 bg-[#f3f4f6] pt-2 pb-2 z-30 space-y-3">
                 <div className="flex bg-slate-200 p-1 rounded-xl shadow-inner">
                    <button onClick={() => setViewMode('daily')} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 ({selectedDate})</button>
@@ -393,43 +374,50 @@
                 </div>
              </div>
 
-             <div className="flex justify-end">
-                {filtered.length > 0 && <div className="text-xs font-medium text-slate-500 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">{viewMode === 'daily' ? '오늘' : '이번 달'} 합계: <span className="text-purple-600 font-bold ml-1">{formatMoney(total)}</span></div>}
-             </div>
-
              <div className="space-y-2 min-h-[300px]">
                 {filtered.length === 0 ? (
                     <div className="text-center py-20 text-slate-400"><i className="fa-solid fa-receipt text-2xl mb-2 block"></i>기록이 없습니다.</div>
                 ) : (
                     filtered.map(tx => (
-                        <div key={tx.id} onClick={() => onEdit(tx)} className="bg-white px-5 py-4 rounded-xl shadow-sm border-b border-slate-100 flex justify-between items-center cursor-pointer active:bg-slate-50 transition-colors">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-bold text-slate-400">{tx.date.slice(5)}</span>
-                                    <span className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded font-medium">{tx.category}</span>
-                                    {tx.isInstallment && <span className="text-[10px] px-1 bg-red-50 text-red-500 rounded border border-red-100">할부{tx.installmentMonths ? `(${tx.installmentMonths})` : ''}</span>}
-                                </div>
-                                <div className="font-bold text-slate-800 text-sm">{tx.desc}</div>
+                        <div key={tx.id} className={`bg-white px-4 py-4 rounded-2xl shadow-sm border-b border-slate-100 flex items-center gap-3 transition-colors ${tx.isUnnecessary ? 'bg-red-50/50 border-red-100' : ''}`}>
+                            <div className={`custom-checkbox ${tx.isUnnecessary ? 'checked' : ''}`} onClick={() => onToggleUnnecessary(tx)}>
+                                {tx.isUnnecessary && <i className="fa-solid fa-check text-xs"></i>}
                             </div>
-                            <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                    <div className="font-bold text-slate-900 text-sm">-{formatMoney(tx.amount)}</div>
-                                    <div className="text-xs text-slate-400">{tx.paymentMethod}</div>
+                            
+                            <div className="flex-1 min-w-0" onClick={() => onEdit(tx)}>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[10px] font-bold text-slate-400">{tx.date.slice(5)}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':'bg-green-50 text-green-600'}`}>{tx.category}</span>
+                                    {tx.isInstallment && <span className="text-[9px] px-1 bg-red-50 text-red-500 rounded border border-red-100 italic">할부</span>}
                                 </div>
-                                <button 
-                                    type="button" 
-                                    onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        onDelete(tx.id); 
-                                    }} 
-                                    className="relative w-10 h-10 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors z-20 group"
-                                >
-                                    <i className="fa-solid fa-trash-can text-sm pointer-events-none group-hover:scale-110 transition-transform"></i>
+                                <div className="font-bold text-slate-800 text-sm truncate">{tx.desc}</div>
+                                <div className="text-[10px] text-slate-400">{tx.paymentMethod}</div>
+                            </div>
+                            
+                            <div className="text-right flex flex-col items-end gap-1">
+                                <div className="font-extrabold text-slate-900 text-sm">-{formatMoney(tx.amount)}</div>
+                                <button type="button" onClick={() => onDelete(tx.id)} className="w-8 h-8 rounded-full text-slate-200 hover:text-red-400 flex items-center justify-center transition-colors">
+                                    <i className="fa-solid fa-trash-can text-xs"></i>
                                 </button>
                             </div>
                         </div>
                     ))
                 )}
+             </div>
+
+             {/* Sticky Totals Bar */}
+             <div className="fixed bottom-[88px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none">
+                <div className="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/50 flex justify-between gap-4 pointer-events-auto">
+                    <div className="flex-1">
+                        <div className="text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-tighter">TOTAL EXPENSE</div>
+                        <div className="text-sm font-black text-slate-800">{formatMoney(total)}</div>
+                    </div>
+                    <div className="w-px bg-slate-100"></div>
+                    <div className="flex-1 text-right">
+                        <div className="text-[10px] text-red-400 font-bold mb-1 uppercase tracking-tighter">UNNECESSARY ⚠️</div>
+                        <div className="text-sm font-black text-red-600">{formatMoney(unnecessaryTotal)}</div>
+                    </div>
+                </div>
              </div>
           </div>
         );
@@ -448,27 +436,21 @@
         </div>
       );
 
-      // --- MAIN APP ---
       const App = () => {
         const [tab, setTab] = useState('dashboard');
         const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
-        
         const [daySheet, setDaySheet] = useState(null);
         const [monthSheets, setMonthSheets] = useState([]); 
         const [transactions, setTransactions] = useState([]);
-
         const [isAddModalOpen, setIsAddModalOpen] = useState(false);
         const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
         const [restoreText, setRestoreText] = useState('');
         const [editingTx, setEditingTx] = useState(null);
         const [installmentChecked, setInstallmentChecked] = useState(false);
-        
-        // New State for Delete Modal
         const [deleteTargetId, setDeleteTargetId] = useState(null);
 
         const currentMonth = selectedDate.slice(0, 7);
 
-        // Force a reload of all data
         const loadData = useCallback(async () => {
             try {
                 const [dSheet, allData, txs] = await Promise.all([
@@ -477,18 +459,13 @@
                     dbOps.getTransactions(currentMonth)
                 ]);
                 const mSheets = allData.sheets.filter(s => s.date.startsWith(currentMonth));
-                
                 setDaySheet(dSheet);
                 setMonthSheets(mSheets);
                 setTransactions(txs);
-            } catch (err) {
-                console.error("Failed to load data", err);
-            }
+            } catch (err) { console.error(err); }
         }, [selectedDate, currentMonth]);
 
         useEffect(() => { loadData(); }, [loadData]);
-
-        const isBudgetEmpty = daySheet ? (daySheet.incomes.main + daySheet.incomes.other === 0 && daySheet.incomes.meal === 0) : false;
 
         const handleSaveSheet = async (newSheet) => {
             await dbOps.saveDaySheet(newSheet);
@@ -498,25 +475,20 @@
         const handleAddTransaction = async (e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
-            
             const originDate = fd.get('date');
             const originAmount = Number(fd.get('amount'));
             const isInstallment = fd.get('isInstallment') === 'on';
             const months = isInstallment ? (Number(fd.get('installmentMonths')) || 1) : 1;
             const baseDesc = fd.get('desc');
             const formTxId = fd.get('txId');
-            
-            // Enforce ID as String
             const baseId = formTxId ? String(formTxId) : (String(Date.now()) + "_" + Math.random().toString(36).substr(2, 5));
 
-            // Ensure we wait for the DB operations to complete
             if (months > 1) {
                 const monthlyAmount = Math.floor(originAmount / months);
                 const remainder = originAmount - (monthlyAmount * months);
                 const promises = [];
-
                 for (let i = 0; i < months; i++) {
-                    const tx = {
+                    promises.push(dbOps.addTransaction({
                         id: String(i === 0 ? baseId : `${baseId}_${i}`),
                         date: addMonths(originDate, i),
                         category: fd.get('category'),
@@ -524,87 +496,51 @@
                         amount: i === 0 ? monthlyAmount + remainder : monthlyAmount,
                         paymentMethod: fd.get('paymentMethod'),
                         isInstallment: true,
-                        installmentMonths: months
-                    };
-                    promises.push(dbOps.addTransaction(tx));
+                        installmentMonths: months,
+                        isUnnecessary: editingTx?.isUnnecessary || false
+                    }));
                 }
                 await Promise.all(promises);
             } else {
-                const tx = {
+                await dbOps.addTransaction({
                     id: String(baseId),
                     date: originDate,
                     category: fd.get('category'),
                     desc: baseDesc,
                     amount: originAmount,
                     paymentMethod: fd.get('paymentMethod'),
-                    isInstallment: isInstallment,
-                    installmentMonths: months
-                };
-                await dbOps.addTransaction(tx);
+                    isInstallment,
+                    installmentMonths: months,
+                    isUnnecessary: editingTx?.isUnnecessary || false
+                });
             }
-            
             setIsAddModalOpen(false);
             setEditingTx(null);
-            
-            // Critical: reload data after DB write to sync Budget page and Ledger list
             await loadData();
-
-            if (originDate !== selectedDate && months === 1) setSelectedDate(originDate);
         };
 
-        const openDeleteModal = (rawId) => {
-            setDeleteTargetId(String(rawId));
+        const handleToggleUnnecessary = async (tx) => {
+            const updatedTx = { ...tx, isUnnecessary: !tx.isUnnecessary };
+            // Optimistic UI update
+            setTransactions(prev => prev.map(t => t.id === tx.id ? updatedTx : t));
+            await dbOps.updateTransaction(updatedTx);
+            // Sync with DB just in case
+            await loadData();
         };
 
         const confirmDelete = async () => {
             if (!deleteTargetId) return;
             const id = deleteTargetId;
-            
-            // Optimistic UI Update: Remove immediately from state
             setTransactions(prev => prev.filter(t => String(t.id) !== id));
-            setDeleteTargetId(null); // Close modal immediately
-
+            setDeleteTargetId(null);
             try {
                 await dbOps.deleteTransaction(id);
-                // Background sync to ensure consistency
                 await loadData();
-            } catch(err) {
-                console.error("삭제 실패", err);
-                alert("삭제 중 오류가 발생했습니다.");
-                await loadData(); // Revert on failure
-            }
+            } catch(err) { alert("Error deleting"); await loadData(); }
         };
 
-        const handleBackup = async () => {
-            try {
-                const data = await dbOps.getAllData();
-                await navigator.clipboard.writeText(JSON.stringify(data));
-                alert("클립보드에 복사되었습니다! 메모장에 붙여넣기 하세요.");
-            } catch (err) {
-                alert("복사 실패. 보안 설정이나 브라우저를 확인하세요.");
-            }
-        };
-
-        const handleRestore = async () => {
-            try {
-                if(!restoreText) return;
-                await dbOps.restoreData(JSON.parse(restoreText));
-                alert("복구 완료!");
-                window.location.reload();
-            } catch(e) { alert("데이터 형식이 올바르지 않습니다."); }
-        };
-
-        const openAddModal = () => {
-            setEditingTx(null);
-            setInstallmentChecked(false);
-            setIsAddModalOpen(true);
-        };
-
-        const openEditModal = (tx) => {
-            setEditingTx(tx);
-            setInstallmentChecked(tx.isInstallment);
-            setIsAddModalOpen(true);
-        };
+        const openAddModal = () => { setEditingTx(null); setInstallmentChecked(false); setIsAddModalOpen(true); };
+        const openEditModal = (tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); };
 
         if (!daySheet) return <div className="flex h-screen items-center justify-center text-purple-600 bg-[#f3f4f6]"><i className="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>;
 
@@ -617,9 +553,9 @@
 
              <main className="flex-1 p-4 overflow-y-auto no-scrollbar relative flex flex-col">
                 {tab === 'dashboard' && <Dashboard monthSheets={monthSheets} monthTransactions={transactions} currentMonth={currentMonth} />}
-                {tab === 'planner' && <Planner sheet={daySheet} onSave={handleSaveSheet} forceEditMode={isBudgetEmpty} transactions={transactions} selectedDate={selectedDate} />}
-                {tab === 'ledger' && <Ledger transactions={transactions} selectedDate={selectedDate} onDelete={openDeleteModal} onEdit={openEditModal} />}
-                {tab === 'settings' && <Settings onBackup={handleBackup} onRestore={() => setIsRestoreModalOpen(true)} onReset={async () => { if(confirm("초기화?")) { await dbOps.clearAll(); window.location.reload(); } }} />}
+                {tab === 'planner' && <Planner sheet={daySheet} onSave={handleSaveSheet} forceEditMode={false} transactions={transactions} selectedDate={selectedDate} />}
+                {tab === 'ledger' && <Ledger transactions={transactions} selectedDate={selectedDate} onDelete={setDeleteTargetId} onEdit={openEditModal} onToggleUnnecessary={handleToggleUnnecessary} />}
+                {tab === 'settings' && <Settings onBackup={async () => { const data = await dbOps.getAllData(); await navigator.clipboard.writeText(JSON.stringify(data)); alert("Back up copied!"); }} onRestore={() => setIsRestoreModalOpen(true)} onReset={async () => { if(confirm("Reset all?")) { await dbOps.clearAll(); window.location.reload(); } }} />}
              </main>
 
              <nav className="bg-white border-t border-slate-100 flex justify-around items-center py-3 pb-safe sticky bottom-0 z-40">
@@ -631,7 +567,7 @@
                 ))}
              </nav>
 
-             {tab === 'ledger' && <button onClick={openAddModal} className="fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full text-white shadow-lg flex items-center justify-center text-xl hover:scale-110 active:scale-95 transition-all z-50 animate-fade-in"><i className="fa-solid fa-plus"></i></button>}
+             {tab === 'ledger' && <button onClick={openAddModal} className="fixed bottom-28 right-6 w-14 h-14 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full text-white shadow-lg flex items-center justify-center text-xl hover:scale-110 active:scale-95 transition-all z-50 animate-fade-in"><i className="fa-solid fa-plus"></i></button>}
 
              {isAddModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-[60] flex items-end sm:items-center justify-center animate-fade-in">
@@ -642,28 +578,42 @@
                       </div>
                       <form onSubmit={handleAddTransaction} className="space-y-4">
                          <input type="hidden" name="txId" defaultValue={editingTx?.id} />
-                         <input type="date" name="date" defaultValue={editingTx?.date || selectedDate} required className="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold" />
-                         <div className="flex gap-2">
-                            <input list="category-list" name="category" placeholder="분류 (식비)" defaultValue={editingTx?.category} required className="w-full p-3 bg-slate-50 rounded-xl outline-none" />
-                            <datalist id="category-list">{['식비','외식비','생활비','교통비','쇼핑','의료비','경조사','불필요지출'].map(c=><option key={c} value={c}/>)}</datalist>
+                         <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-400 ml-1">날짜</label>
+                            <input type="date" name="date" defaultValue={editingTx?.date || selectedDate} required className="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold" />
                          </div>
-                         <input type="text" name="desc" placeholder="내용" defaultValue={editingTx?.desc} required className="w-full p-3 bg-slate-50 rounded-xl outline-none" />
-                         <input type="number" name="amount" placeholder="금액" defaultValue={editingTx?.amount} required className="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold text-lg" />
-                         <div className="grid grid-cols-2 gap-2">
-                            <select name="paymentMethod" defaultValue={editingTx?.paymentMethod || '체크카드'} className="w-full p-3 bg-slate-50 rounded-xl outline-none">
-                                {PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}
-                            </select>
-                            <div className="flex items-center gap-2 border border-slate-200 rounded-xl bg-white px-3">
-                                <label className="flex items-center gap-2 cursor-pointer flex-1">
-                                    <input type="checkbox" name="isInstallment" checked={installmentChecked} onChange={(e) => setInstallmentChecked(e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
-                                    <span className="text-sm font-medium">할부</span>
-                                </label>
-                                {installmentChecked && (
-                                    <input type="number" name="installmentMonths" placeholder="개월" defaultValue={editingTx?.installmentMonths} className="w-12 text-sm border-b border-purple-200 outline-none text-center bg-transparent" />
-                                )}
+                         <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-400 ml-1">분류</label>
+                                <select name="category" defaultValue={editingTx?.category || '식비'} className="w-full p-3 bg-slate-50 rounded-xl outline-none font-medium">
+                                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-400 ml-1">결제수단</label>
+                                <select name="paymentMethod" defaultValue={editingTx?.paymentMethod || '체크카드'} className="w-full p-3 bg-slate-50 rounded-xl outline-none font-medium">
+                                    {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
                             </div>
                          </div>
-                         <button type="submit" className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg mt-2">저장하기</button>
+                         <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-400 ml-1">상세 항목</label>
+                            <input type="text" name="desc" placeholder="상세 항목을 입력하세요" defaultValue={editingTx?.desc} required className="w-full p-3 bg-slate-50 rounded-xl outline-none" />
+                         </div>
+                         <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-400 ml-1">지출 금액</label>
+                            <input type="number" name="amount" placeholder="0" defaultValue={editingTx?.amount} required className="w-full p-3 bg-slate-50 rounded-xl outline-none font-bold text-lg" />
+                         </div>
+                         <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+                            <label className="flex items-center gap-2 cursor-pointer flex-1">
+                                <input type="checkbox" name="isInstallment" checked={installmentChecked} onChange={(e) => setInstallmentChecked(e.target.checked)} className="w-4 h-4 text-purple-600 rounded" />
+                                <span className="text-sm font-medium">할부 결제</span>
+                            </label>
+                            {installmentChecked && (
+                                <input type="number" name="installmentMonths" placeholder="개월" defaultValue={editingTx?.installmentMonths} className="w-16 text-sm border-b border-purple-200 outline-none text-center bg-transparent font-bold" />
+                            )}
+                         </div>
+                         <button type="submit" className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold shadow-lg mt-2 active:scale-95 transition-transform">지출 저장</button>
                       </form>
                    </div>
                 </div>
@@ -671,29 +621,28 @@
 
              {isRestoreModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-fade-in">
-                   <div className="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl">
-                      <h3 className="text-lg font-bold mb-2">데이터 복구</h3>
-                      <textarea className="w-full h-40 border border-slate-200 rounded-xl p-3 text-xs bg-slate-50 outline-none resize-none" placeholder='데이터 붙여넣기' value={restoreText} onChange={e => setRestoreText(e.target.value)}></textarea>
-                      <div className="flex gap-2 mt-4">
+                   <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl">
+                      <h3 className="text-lg font-bold mb-4">데이터 복구</h3>
+                      <textarea className="w-full h-48 border border-slate-100 rounded-2xl p-4 text-xs bg-slate-50 outline-none resize-none" placeholder='데이터 붙여넣기' value={restoreText} onChange={e => setRestoreText(e.target.value)}></textarea>
+                      <div className="flex gap-3 mt-6">
                          <button onClick={() => setIsRestoreModalOpen(false)} className="flex-1 py-3 bg-slate-100 rounded-xl font-medium">취소</button>
-                         <button onClick={handleRestore} className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-medium">복구하기</button>
+                         <button onClick={async () => { try { await dbOps.restoreData(JSON.parse(restoreText)); alert("Restored!"); window.location.reload(); } catch(e){alert("Error");} }} className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-medium">복구하기</button>
                       </div>
                    </div>
                 </div>
              )}
 
-             {/* Delete Confirmation Modal */}
              {deleteTargetId && (
                 <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-sm text-center modal-enter">
+                    <div className="bg-white rounded-3xl p-6 shadow-2xl w-full max-w-sm text-center modal-enter">
                         <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
                             <i className="fa-solid fa-trash-can text-lg"></i>
                         </div>
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">지출 내역 삭제</h3>
-                        <p className="text-sm text-slate-500 mb-6">선택한 내역을 정말 삭제하시겠습니까?<br/>삭제된 데이터는 복구할 수 없습니다.</p>
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">항목 삭제</h3>
+                        <p className="text-sm text-slate-500 mb-6">정말 삭제하시겠습니까?</p>
                         <div className="flex gap-3">
-                            <button onClick={() => setDeleteTargetId(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold active:scale-95 transition-transform">취소</button>
-                            <button onClick={confirmDelete} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-md shadow-red-200 active:scale-95 transition-transform">삭제</button>
+                            <button onClick={() => setDeleteTargetId(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold">취소</button>
+                            <button onClick={confirmDelete} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold">삭제</button>
                         </div>
                     </div>
                 </div>
