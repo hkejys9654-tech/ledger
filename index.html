@@ -63,6 +63,8 @@
         insGaYoung: '🛡️ 보험(가영)', 
         insEunWoo: '👶 보험(은우)', 
         insSeonWoo: '👶 보험(선우)',
+        eduEunWoo: '🎓 교육비(은우)',
+        eduSeonWoo: '🎓 교육비(선우)',
         church: '⛪ 교회회비', 
         allowance: '💸 용돈', 
         savings: '🐖 적금',
@@ -83,7 +85,7 @@
       };
 
       // --- DB SERVICE ---
-      const DB_NAME = 'GarongLedger_v11_Final'; 
+      const DB_NAME = 'GarongLedger_v12_Final'; 
       const DB_VERSION = 1;
 
       const createInitialSheet = (date) => ({
@@ -91,7 +93,7 @@
         incomes: { main: 0, other: 0, meal: 0, overtime: 0, additional: [] },
         fixedExpenses: Object.keys(FIXED_LABELS).reduce((acc, key) => ({ 
           ...acc, 
-          [key]: { amount: 0, method: '현금' } 
+          [key]: { planned: 0, actual: 0, method: '현금' } 
         }), {}),
       });
 
@@ -115,6 +117,16 @@
             req.onsuccess = () => {
                 const sheet = req.result || createInitialSheet(date);
                 if (!sheet.incomes.additional) sheet.incomes.additional = [];
+                // Migration support for old data format
+                Object.keys(FIXED_LABELS).forEach(k => {
+                  if (sheet.fixedExpenses[k] && typeof sheet.fixedExpenses[k].amount === 'number') {
+                    sheet.fixedExpenses[k].actual = sheet.fixedExpenses[k].amount;
+                    delete sheet.fixedExpenses[k].amount;
+                  }
+                  if (!sheet.fixedExpenses[k]) {
+                    sheet.fixedExpenses[k] = { planned: 0, actual: 0, method: '현금' };
+                  }
+                });
                 resolve(sheet);
             };
           });
@@ -192,7 +204,6 @@
       const Dashboard = ({ allSheets, allTransactions, currentMonth, selectedDate }) => {
         const currentYear = selectedDate.slice(0, 4);
         
-        // Month Stats
         const monthSheets = allSheets.filter(s => s.date.startsWith(currentMonth));
         const monthTransactions = allTransactions.filter(t => t.date.startsWith(currentMonth));
         
@@ -202,32 +213,29 @@
             return acc + basic + add;
         }, 0);
         
-        const mFixed = monthSheets.reduce((acc, s) => acc + Object.values(s.fixedExpenses).reduce((sum, v) => sum + v.amount, 0), 0);
+        const mFixed = monthSheets.reduce((acc, s) => acc + Object.values(s.fixedExpenses).reduce((sum, v) => sum + (v.actual || 0), 0), 0);
         const mActual = monthTransactions.reduce((acc, t) => acc + t.amount, 0);
         const mBalance = mIncome - mFixed - mActual;
         const mUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
 
-        // Stats by Payment Method (Fixed + Transactions)
         const methodStats = PAYMENT_METHODS.reduce((acc, method) => {
           const fixedPart = monthSheets.reduce((sum, s) => {
-             return sum + Object.values(s.fixedExpenses).filter(v => v.method === method).reduce((vSum, v) => vSum + v.amount, 0);
+             return sum + Object.values(s.fixedExpenses).filter(v => v.method === method).reduce((vSum, v) => vSum + (v.actual || 0), 0);
           }, 0);
           const transPart = monthTransactions.filter(t => t.paymentMethod === method).reduce((sum, t) => sum + t.amount, 0);
           acc[method] = fixedPart + transPart;
           return acc;
         }, {});
 
-        // Year Stats
         const yearSheets = allSheets.filter(s => s.date.startsWith(currentYear));
         const yearTransactions = allTransactions.filter(t => t.date.startsWith(currentYear));
         const yIncome = yearSheets.reduce((acc, s) => acc + s.incomes.main + s.incomes.other + s.incomes.meal + s.incomes.overtime + (s.incomes.additional || []).reduce((sum, i) => sum + (Number(i.amount)||0), 0), 0);
-        const yFixed = yearSheets.reduce((acc, s) => acc + Object.values(s.fixedExpenses).reduce((sum, v) => sum + v.amount, 0), 0);
+        const yFixed = yearSheets.reduce((acc, s) => acc + Object.values(s.fixedExpenses).reduce((sum, v) => sum + (v.actual || 0), 0), 0);
         const yActual = yearTransactions.reduce((acc, t) => acc + t.amount, 0);
         const yBalance = yIncome - yFixed - yActual;
 
         return (
           <div className="space-y-6 animate-fade-in pb-24">
-            {/* Monthly Balance Card */}
             <div className="bg-gradient-to-br from-purple-800 to-indigo-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                <div className="absolute -top-4 -right-4 opacity-10"><i className="fa-solid fa-calendar-check text-9xl"></i></div>
                <div className="relative z-10">
@@ -240,15 +248,14 @@
                    <div className="font-bold text-base">{formatMoney(mIncome)}</div>
                  </div>
                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/10">
-                   <div className="text-[10px] text-indigo-200 mb-1">월 지출</div>
+                   <div className="text-[10px] text-indigo-200 mb-1">월 지출(고정+변동)</div>
                    <div className="font-bold text-base">{formatMoney(mFixed + mActual)}</div>
                  </div>
                </div>
             </div>
 
-            {/* Stats by Payment Method */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-               <h3 className="text-slate-800 font-black text-lg mb-4 flex items-center gap-2"><i className="fa-solid fa-credit-card text-purple-500"></i> 결제 수단별 통계</h3>
+               <h3 className="text-slate-800 font-black text-lg mb-4 flex items-center gap-2"><i className="fa-solid fa-credit-card text-purple-500"></i> 결제 수단별 실지출</h3>
                <div className="space-y-3">
                   {PAYMENT_METHODS.map(m => (
                     <div key={m} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
@@ -263,7 +270,6 @@
                </div>
             </div>
 
-            {/* Annual Stats Summary */}
             <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-xl">
                <div className="flex justify-between items-center mb-4">
                   <h3 className="font-black text-sm uppercase tracking-widest text-indigo-300">{currentYear}년 누적 요약</h3>
@@ -281,15 +287,18 @@
         );
       };
 
-      const Planner = ({ sheet, onSave, transactions, selectedDate }) => {
+      const Planner = ({ sheet, onSave, selectedDate }) => {
         const [isEditing, setIsEditing] = useState(false);
         const [tempSheet, setTempSheet] = useState(sheet);
 
         useEffect(() => { setTempSheet(sheet); }, [sheet]);
 
-        const insuranceSum = Object.keys(tempSheet.fixedExpenses)
-          .filter(k => k.startsWith('ins'))
-          .reduce((sum, k) => sum + tempSheet.fixedExpenses[k].amount, 0);
+        const insuranceSum = Object.keys(tempSheet.fixedExpenses).filter(k => k.startsWith('ins')).reduce((sum, k) => sum + (tempSheet.fixedExpenses[k].actual || 0), 0);
+        const eduSum = Object.keys(tempSheet.fixedExpenses).filter(k => k.startsWith('edu')).reduce((sum, k) => sum + (tempSheet.fixedExpenses[k].actual || 0), 0);
+
+        const grandPlanned = Object.values(tempSheet.fixedExpenses).reduce((acc, v) => acc + (v.planned || 0), 0);
+        const grandActual = Object.values(tempSheet.fixedExpenses).reduce((acc, v) => acc + (v.actual || 0), 0);
+        const balance = grandPlanned - grandActual;
 
         const handleChange = (section, key, field, value) => {
           setTempSheet(prev => {
@@ -298,130 +307,130 @@
               if (field) next.incomes[key][field] = value;
               else next.incomes[key] = Number(value);
             } else {
-              if (field) next.fixedExpenses[key][field] = field === 'amount' ? Number(value) : value;
+              next.fixedExpenses[key][field] = field === 'method' ? value : Number(value);
             }
             return next;
           });
         };
 
-        const addIncomeItem = () => {
-          setTempSheet(prev => ({
-            ...prev,
-            incomes: {
-              ...prev.incomes,
-              additional: [...(prev.incomes.additional || []), { id: Date.now(), desc: '', amount: 0 }]
-            }
-          }));
-        };
-
-        const updateIncomeItem = (id, field, value) => {
-          setTempSheet(prev => ({
-            ...prev,
-            incomes: {
-              ...prev.incomes,
-              additional: prev.incomes.additional.map(i => i.id === id ? { ...i, [field]: field === 'amount' ? Number(value) : value } : i)
-            }
-          }));
-        };
-
-        const removeIncomeItem = (id) => {
-          setTempSheet(prev => ({
-            ...prev,
-            incomes: { ...prev.incomes, additional: prev.incomes.additional.filter(i => i.id !== id) }
-          }));
-        };
-
         const renderFixedRow = (k, label) => (
-          <div key={k} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
-            <span className="text-slate-700 font-bold text-xs w-1/3 truncate">{label}</span>
-            <div className="flex gap-2 flex-1 justify-end">
-              <input type="number" value={tempSheet.fixedExpenses[k].amount === 0 ? '' : tempSheet.fixedExpenses[k].amount} placeholder="0" disabled={!isEditing}
-                onChange={(e) => handleChange('fixedExpenses', k, 'amount', e.target.value)}
-                className="w-24 text-right p-1 rounded-lg text-sm bg-transparent font-black focus:bg-slate-50 outline-none transition-colors"/>
+          <div key={k} className="flex flex-col gap-2 py-3 border-b border-slate-50 last:border-0">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-700 font-bold text-xs truncate">{label}</span>
               <select value={tempSheet.fixedExpenses[k].method} disabled={!isEditing}
                 onChange={(e) => handleChange('fixedExpenses', k, 'method', e.target.value)}
-                className={`w-20 text-[10px] p-1 rounded-lg bg-transparent outline-none text-right font-black ${!isEditing ? 'appearance-none' : 'bg-slate-100'}`}>
+                className={`text-[9px] px-2 py-1 rounded-md bg-transparent outline-none font-bold ${!isEditing ? 'appearance-none' : 'bg-slate-100 border border-slate-200'}`}>
                 {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col">
+                <span className="text-[8px] text-slate-400 font-black uppercase mb-1 ml-1">지출 계획</span>
+                <input type="number" value={tempSheet.fixedExpenses[k].planned === 0 ? '' : tempSheet.fixedExpenses[k].planned} placeholder="0" disabled={!isEditing}
+                  onChange={(e) => handleChange('fixedExpenses', k, 'planned', e.target.value)}
+                  className="w-full text-right p-2 rounded-xl text-xs bg-purple-50/50 font-black focus:bg-purple-50 outline-none border border-purple-100/50"/>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[8px] text-slate-400 font-black uppercase mb-1 ml-1">실제 지출</span>
+                <input type="number" value={tempSheet.fixedExpenses[k].actual === 0 ? '' : tempSheet.fixedExpenses[k].actual} placeholder="0" disabled={!isEditing}
+                  onChange={(e) => handleChange('fixedExpenses', k, 'actual', e.target.value)}
+                  className="w-full text-right p-2 rounded-xl text-xs bg-slate-100 font-black focus:bg-slate-200 outline-none border border-slate-200"/>
+              </div>
             </div>
           </div>
         );
 
         return (
-          <div className="space-y-6 animate-fade-in pb-24">
+          <div className="space-y-6 animate-fade-in pb-48">
             <div className="flex justify-between items-center px-1">
                <div>
-                  <h2 className="text-xl font-black text-slate-800">고정예산 설정</h2>
-                  <p className="text-[10px] text-purple-500 font-black mt-1 uppercase tracking-widest">날짜: {sheet.date}</p>
+                  <h2 className="text-xl font-black text-slate-800 tracking-tight">고정예산 관리</h2>
+                  <p className="text-[10px] text-purple-500 font-black mt-1 uppercase tracking-widest">결산일: {sheet.date}</p>
                </div>
                <div className="flex gap-2">
                  {isEditing ? (
                    <><button onClick={() => { setIsEditing(false); setTempSheet(sheet); }} className="px-3 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold">취소</button>
                    <button onClick={() => { onSave(tempSheet); setIsEditing(false); }} className="px-3 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold shadow-lg">저장</button></>
                  ) : (
-                   <button onClick={() => setIsEditing(true)} className="px-3 py-2 bg-white border border-purple-100 text-purple-600 rounded-xl text-xs font-bold">수정하기</button>
+                   <button onClick={() => setIsEditing(true)} className="px-3 py-2 bg-white border border-purple-100 text-purple-600 rounded-xl text-xs font-bold shadow-sm">수정하기</button>
                  )}
                </div>
             </div>
 
-            {/* Income Section */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-               <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-hand-holding-dollar"></i> 수입 예산</h3>
-               <div className="space-y-1">
-                  {[['💰 주수입', 'main'], ['🎁 기타수입', 'other'], ['🍚 정액급식비', 'meal'], ['⏰ 초과수당', 'overtime']].map(([l, k]) => (
-                    <div key={k} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
-                      <label className="text-slate-600 text-xs font-bold">{l}</label>
-                      <input type="number" value={tempSheet.incomes[k] === 0 ? '' : tempSheet.incomes[k]} placeholder="0" disabled={!isEditing}
-                        onChange={(e) => handleChange('incomes', k, null, e.target.value)}
-                        className="text-right p-2 rounded-lg bg-transparent w-32 font-black text-slate-800 outline-none focus:bg-slate-50" />
-                    </div>
-                  ))}
-               </div>
-               {/* Additional Dynamic Incomes */}
-               <div className="mt-4 pt-4 border-t border-slate-50 space-y-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">기타 수입 항목</span>
-                    {isEditing && <button onClick={addIncomeItem} className="text-[9px] bg-purple-50 text-purple-600 px-2 py-1 rounded-lg font-black">+ 추가</button>}
-                  </div>
-                  {tempSheet.incomes.additional.map(item => (
-                    <div key={item.id} className="flex gap-2 items-center animate-fade-in">
-                       <input type="text" value={item.desc} placeholder="항목" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'desc', e.target.value)}
-                         className="flex-1 p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none" />
-                       <input type="number" value={item.amount === 0 ? '' : item.amount} placeholder="0" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'amount', e.target.value)}
-                         className="w-24 p-2 bg-slate-50 rounded-xl text-xs font-bold text-right outline-none" />
-                       {isEditing && <button onClick={() => removeIncomeItem(item.id)} className="text-red-400"><i className="fa-solid fa-circle-minus"></i></button>}
-                    </div>
-                  ))}
-               </div>
+               <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-coins"></i> 수입 예산</h3>
+               {[['💰 주수입', 'main'], ['🎁 기타수입', 'other'], ['🍚 정액급식비', 'meal'], ['⏰ 초과수당', 'overtime']].map(([l, k]) => (
+                 <div key={k} className="flex justify-between items-center py-3 border-b border-slate-50 last:border-0">
+                   <label className="text-slate-600 text-xs font-bold">{l}</label>
+                   <input type="number" value={tempSheet.incomes[k] === 0 ? '' : tempSheet.incomes[k]} placeholder="0" disabled={!isEditing}
+                     onChange={(e) => handleChange('incomes', k, null, e.target.value)}
+                     className="text-right p-2 rounded-lg bg-transparent w-32 font-black text-slate-800 outline-none focus:bg-slate-50" />
+                 </div>
+               ))}
             </div>
 
-            {/* Fixed Expenses Section */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-               <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-receipt"></i> 고정 지출 (세부)</h3>
-               <div className="space-y-1">
+               <h3 className="text-purple-600 font-black text-sm mb-6 flex items-center gap-2 uppercase tracking-tighter border-b border-purple-50 pb-2"><i className="fa-solid fa-receipt"></i> 고정 지출 내역</h3>
+               
+               <div className="space-y-4">
                   {renderFixedRow('loanInterest', '🏦 대출이자')}
                   {renderFixedRow('maintenance', '🏢 관리비')}
                   {renderFixedRow('gas', '🔥 도시가스')}
                   {renderFixedRow('church', '⛪ 교회회비')}
                   {renderFixedRow('allowance', '💸 용돈')}
                   {renderFixedRow('savings', '🐖 적금')}
-                  <div className="h-4"></div>
-                  <div className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest px-1">통신비</div>
-                  {renderFixedRow('commJiSeung', '📱 지승')}
-                  {renderFixedRow('commGaYoung', '📱 가영')}
-                  {renderFixedRow('commInternet', '🌐 인터넷')}
-                  <div className="h-4"></div>
-                  <div className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest px-1">보험료</div>
-                  {renderFixedRow('insJiSeung', '🛡️ 지승')}
-                  {renderFixedRow('insGaYoung', '🛡️ 가영')}
-                  {renderFixedRow('insEunWoo', '👶 은우')}
-                  {renderFixedRow('insSeonWoo', '👶 선우')}
+
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">통신비 그룹</div>
+                    {renderFixedRow('commJiSeung', '📱 지승 통신비')}
+                    {renderFixedRow('commGaYoung', '📱 가영 통신비')}
+                    {renderFixedRow('commInternet', '🌐 인터넷')}
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">보험료 그룹</div>
+                    {renderFixedRow('insJiSeung', '🛡️ 지승 보험')}
+                    {renderFixedRow('insGaYoung', '🛡️ 가영 보험')}
+                    {renderFixedRow('insEunWoo', '👶 은우 보험')}
+                    {renderFixedRow('insSeonWoo', '👶 선우 보험')}
+                    <div className="mt-3 p-3 bg-indigo-50 rounded-2xl flex justify-between items-center text-[11px] font-black text-indigo-700">
+                      <span>보험료 실지출 합계</span>
+                      <span>{formatMoney(insuranceSum)}</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-100">
+                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">교육비 그룹</div>
+                    {renderFixedRow('eduEunWoo', '🎓 은우 교육비')}
+                    {renderFixedRow('eduSeonWoo', '🎓 선우 교육비')}
+                    <div className="mt-3 p-3 bg-emerald-50 rounded-2xl flex justify-between items-center text-[11px] font-black text-emerald-700">
+                      <span>교육비 실지출 합계</span>
+                      <span>{formatMoney(eduSum)}</span>
+                    </div>
+                  </div>
                </div>
-               {/* Insurance Total Bar */}
-               <div className="mt-4 p-4 bg-indigo-50 rounded-2xl flex justify-between items-center border border-indigo-100">
-                  <span className="text-xs font-black text-indigo-600">보험료 합계</span>
-                  <span className="font-black text-indigo-700">{formatMoney(insuranceSum)}</span>
-               </div>
+            </div>
+
+            {/* Sticky Fixed Summary Card */}
+            <div className="fixed bottom-[100px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none">
+              <div className="bg-slate-900 p-5 rounded-3xl shadow-2xl border border-white/10 pointer-events-auto">
+                <div className="grid grid-cols-2 gap-4 border-b border-white/5 pb-4 mb-4">
+                  <div>
+                    <div className="text-[9px] text-slate-500 font-black uppercase mb-1">지출계획 합계</div>
+                    <div className="text-white font-black text-sm">{formatMoney(grandPlanned)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[9px] text-slate-500 font-black uppercase mb-1">실지출 합계</div>
+                    <div className="text-white font-black text-sm">{formatMoney(grandActual)}</div>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="text-[10px] text-indigo-300 font-black uppercase tracking-widest">잔여 예산 (차액)</div>
+                  <div className={`text-xl font-black ${balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {balance >= 0 ? '+' : ''}{formatMoney(balance)}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -452,7 +461,7 @@
                 </div>
                 <div className="relative">
                    <i className="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
-                   <input type="text" placeholder="지출 항목이나 분류 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                   <input type="text" placeholder="변동지출 항목 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                      className="w-full pl-10 pr-4 py-3.5 rounded-2xl border-none shadow-sm bg-white focus:ring-2 focus:ring-purple-200 outline-none font-medium" />
                 </div>
              </div>
@@ -488,7 +497,6 @@
                 )}
              </div>
 
-             {/* Sticky Footer Totals Bar */}
              <div className="fixed bottom-[92px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none">
                 <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-3xl shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
                     <div className="flex-1">
@@ -518,7 +526,7 @@
                  </div>
               </div>
            </div>
-           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v11.0</div>
+           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v12.0</div>
         </div>
       );
 
@@ -622,7 +630,7 @@
 
              <main className="flex-1 p-4 overflow-y-auto no-scrollbar relative flex flex-col">
                 {tab === 'dashboard' && <Dashboard allSheets={allData.sheets} allTransactions={allData.transactions} currentMonth={currentMonth} selectedDate={selectedDate} />}
-                {tab === 'planner' && <Planner sheet={daySheet} onSave={handleSaveSheet} transactions={allData.transactions} selectedDate={selectedDate} />}
+                {tab === 'planner' && <Planner sheet={daySheet} onSave={handleSaveSheet} selectedDate={selectedDate} />}
                 {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} />}
                 {tab === 'settings' && <Settings onBackup={async () => { const data = await dbOps.getAllData(); await navigator.clipboard.writeText(JSON.stringify(data)); alert("백업 데이터가 클립보드에 복사되었습니다!"); }} onRestore={() => setIsRestoreModalOpen(true)} onReset={async () => { if(confirm("모든 데이터를 영구적으로 삭제하시겠습니까?")) { await dbOps.clearAll(); window.location.reload(); } }} />}
              </main>
