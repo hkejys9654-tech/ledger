@@ -71,7 +71,7 @@
       };
       
       const PAYMENT_METHODS = ['롯데카드', '현대카드', '신한카드', '체크카드', '현금'];
-      const CATEGORIES = ['식비', '외식비', '생활비', '기타현금지출'];
+      const CATEGORIES = ['식비', '외식비', '생활비', '기타', '기타현금지출'];
 
       // --- UTILS ---
       const addMonths = (dateStr, months) => {
@@ -453,26 +453,28 @@
         const total = filtered.reduce((acc, t) => acc + t.amount, 0);
         const unnecessaryTotal = filtered.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
 
-        return (
-          <div className="space-y-4 animate-fade-in pb-40">
-             <div className="sticky top-0 bg-[#f3f4f6] pt-2 pb-2 z-30 space-y-3">
-                <div className="flex bg-slate-200/50 p-1 rounded-2xl shadow-inner">
-                   <button onClick={() => setViewMode('daily')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 내역</button>
-                   <button onClick={() => setViewMode('monthly')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별 전체</button>
-                </div>
-                <div className="relative">
-                   <i className="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
-                   <input type="text" placeholder="변동지출 항목 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                     className="w-full pl-10 pr-4 py-3.5 rounded-2xl border-none shadow-sm bg-white focus:ring-2 focus:ring-purple-200 outline-none font-medium" />
-                </div>
-             </div>
+        const renderTransactions = () => {
+            if (filtered.length === 0) {
+                return <div className="text-center py-24 text-slate-400"><i className="fa-solid fa-receipt text-3xl mb-3 block opacity-20"></i>지출 내역이 없습니다.</div>;
+            }
 
-             <div className="space-y-3 min-h-[300px]">
-                {filtered.length === 0 ? (
-                    <div className="text-center py-24 text-slate-400"><i className="fa-solid fa-receipt text-3xl mb-3 block opacity-20"></i>지출 내역이 없습니다.</div>
-                ) : (
-                    filtered.map(tx => (
-                        <div key={tx.id} className={`bg-white px-4 py-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 transition-all active:scale-[0.98] ${tx.isUnnecessary ? 'bg-red-50/40 border-red-100' : ''}`}>
+            let lastDate = null;
+            return filtered.map((tx, index) => {
+                const showHeader = viewMode === 'monthly' && tx.date !== lastDate;
+                lastDate = tx.date;
+                
+                const [y, m, d] = tx.date.split('-');
+                const dateLabel = `${m}월 ${d}일`;
+
+                return (
+                    <React.Fragment key={tx.id}>
+                        {showHeader && (
+                            <div className="flex items-center gap-3 pt-6 pb-2 px-1">
+                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{dateLabel}</span>
+                                <div className="h-[1px] flex-1 bg-gradient-to-r from-slate-200 to-transparent"></div>
+                            </div>
+                        )}
+                        <div className={`bg-white px-4 py-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3 transition-all active:scale-[0.98] ${tx.isUnnecessary ? 'bg-red-50/40 border-red-100' : ''}`}>
                             <div className={`custom-checkbox ${tx.isUnnecessary ? 'checked' : ''}`} onClick={() => onToggleUnnecessary(tx)}>
                                 {tx.isUnnecessary && <i className="fa-solid fa-check text-xs"></i>}
                             </div>
@@ -480,7 +482,7 @@
                             <div className="flex-1 min-w-0" onClick={() => onEdit(tx)}>
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="text-[10px] font-black text-slate-400">{tx.date.slice(5)}</span>
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':tx.category==='생활비'?'bg-emerald-50 text-emerald-600':'bg-slate-100 text-slate-600'}`}>{tx.category}</span>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':tx.category==='생활비'?'bg-emerald-50 text-emerald-600':tx.category==='기타'?'bg-slate-50 text-slate-600':'bg-amber-50 text-amber-600'}`}>{tx.category}</span>
                                     {tx.isInstallment && <span className="text-[9px] px-1 bg-purple-50 text-purple-500 rounded font-black italic border border-purple-100">할부</span>}
                                 </div>
                                 <div className="font-bold text-slate-800 text-sm truncate">{tx.desc}</div>
@@ -494,12 +496,32 @@
                                 </button>
                             </div>
                         </div>
-                    ))
-                )}
+                    </React.Fragment>
+                );
+            });
+        };
+
+        return (
+          <div className="space-y-4 animate-fade-in pb-72">
+             <div className="sticky top-0 bg-[#f3f4f6] pt-2 pb-2 z-30 space-y-3">
+                <div className="flex bg-slate-200/50 p-1 rounded-2xl shadow-inner">
+                   <button onClick={() => setViewMode('daily')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 내역</button>
+                   <button onClick={() => setViewMode('monthly')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별 전체</button>
+                </div>
+                <div className="relative">
+                   <i className="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
+                   <input type="text" placeholder="변동지출 항목 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                     className="w-full pl-10 pr-4 py-3.5 rounded-2xl border-none shadow-sm bg-white focus:ring-2 focus:ring-purple-200 outline-none font-medium" />
+                </div>
              </div>
 
-             <div className="fixed bottom-[92px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none z-50">
-                <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-3xl shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
+             <div className="space-y-3 min-h-[300px]">
+                {renderTransactions()}
+             </div>
+
+             {/* Sticky Footer Totals Bar */}
+             <div className="fixed bottom-[96px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none z-50">
+                <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[32px] shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
                     <div className="flex-1">
                         <div className="text-[10px] text-slate-500 font-black mb-1 uppercase tracking-widest">변동지출 합계</div>
                         <div className="text-lg font-black text-white">{formatMoney(total)}</div>
@@ -527,7 +549,7 @@
                  </div>
               </div>
            </div>
-           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v12.1</div>
+           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v12.2</div>
         </div>
       );
 
