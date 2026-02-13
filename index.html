@@ -79,10 +79,11 @@
         to { opacity: 1; transform: translateY(0) translateX(-50%); }
       }
 
-      /* Fix mobile textarea select/paste */
       .allow-select {
         user-select: text !important;
         -webkit-user-select: text !important;
+        pointer-events: auto !important;
+        -webkit-appearance: none;
       }
     </style>
   </head>
@@ -139,7 +140,7 @@
       };
 
       // --- DB SERVICE ---
-      const DB_NAME = 'GarongLedger_v19'; 
+      const DB_NAME = 'GarongLedger_v20_Final'; 
       const DB_VERSION = 1;
 
       const createInitialMonthSheet = (month) => ({
@@ -236,9 +237,21 @@
             const tx = db.transaction(['transactions', 'monthSheets'], 'readwrite');
             tx.objectStore('transactions').clear();
             tx.objectStore('monthSheets').clear();
-            (data.transactions || []).forEach(t => tx.objectStore('transactions').put(t));
-            (data.monthSheets || []).forEach(s => tx.objectStore('monthSheets').put(s));
-            return new Promise(r => tx.oncomplete = r);
+            
+            // Robust check for data keys, default to empty arrays if missing
+            const transactions = (data && data.transactions) ? data.transactions : [];
+            const monthSheets = (data && data.monthSheets) ? data.monthSheets : [];
+            
+            transactions.forEach(t => tx.objectStore('transactions').put(t));
+            monthSheets.forEach(s => tx.objectStore('monthSheets').put(s));
+            
+            return new Promise((resolve, reject) => {
+              tx.oncomplete = () => resolve();
+              tx.onerror = () => {
+                console.error("Critical Restore Error:", tx.error);
+                reject(tx.error);
+              };
+            });
         },
         clearAll: async () => {
             const db = await dbPromise;
@@ -434,8 +447,8 @@
 
         return (
           <div className="animate-fade-in pb-[340px]">
-            {/* STICKY ACTION BAR: LAYERED BELOW MAIN HEADER (top-[116px]) */}
-            <div className="sticky top-[116px] z-40 bg-[#f3f4f6] px-1 py-3 border-b border-slate-200/40">
+            {/* STICKY ACTION BAR: ALIGNED MAGNET-LIKE AT top-[106px] */}
+            <div className="sticky top-[106px] z-40 bg-[#f3f4f6] px-1 py-3 border-b border-slate-200/60 shadow-sm">
               <div className="flex justify-between items-center px-1">
                  <div>
                     <h2 className="text-xl font-black text-slate-800 tracking-tight leading-tight">고정예산 관리</h2>
@@ -649,8 +662,8 @@
 
         return (
           <div className="animate-fade-in pb-[280px]">
-             {/* STICKY SEARCH/FILTER BAR: LAYERED BELOW MAIN HEADER (top-[116px]) */}
-             <div className="sticky top-[116px] bg-[#f3f4f6] pt-3 pb-3 z-30 space-y-3 px-1">
+             {/* STICKY SEARCH/FILTER BAR: MAGNET-LIKE AT top-[106px] */}
+             <div className="sticky top-[106px] bg-[#f3f4f6] pt-3 pb-3 z-30 space-y-3 px-1 border-b border-slate-200/60 shadow-sm">
                 <div className="flex bg-slate-200/50 p-1 rounded-2xl shadow-inner">
                    <button onClick={() => setViewMode('daily')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 내역</button>
                    <button onClick={() => setViewMode('monthly')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별 전체</button>
@@ -696,7 +709,7 @@
                  </div>
               </div>
            </div>
-           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v19.0</div>
+           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v20_Final</div>
         </div>
       );
 
@@ -733,7 +746,6 @@
         };
 
         const copyToClipboard = (text) => {
-          // Robust mobile copy method
           const textArea = document.createElement("textarea");
           textArea.value = text;
           textArea.style.position = "fixed";
@@ -742,7 +754,7 @@
           document.body.appendChild(textArea);
           textArea.focus();
           textArea.select();
-          textArea.setSelectionRange(0, 99999); // For mobile
+          textArea.setSelectionRange(0, 99999);
           try {
             document.execCommand('copy');
           } catch (err) {
@@ -844,8 +856,8 @@
                </nav>
              </div>
 
-             {/* MAIN CONTENT: Minimal top padding to prevent content overlap */}
-             <main className="flex-1 p-4 relative flex flex-col pt-2">
+             {/* MAIN CONTENT: Minimal padding to follow headers closely */}
+             <main className="flex-1 p-4 relative flex flex-col pt-[110px]">
                 {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} />}
                 {tab === 'planner' && <Planner sheet={monthSheet} onSave={handleSaveMonthSheet} currentMonth={currentMonth} />}
                 {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} />}
@@ -938,20 +950,67 @@
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-fade-in">
                    <div className="bg-white w-full max-w-md rounded-t-[32px] sm:rounded-[32px] p-8 shadow-2xl max-h-[85vh] overflow-y-auto">
                       <h3 className="text-xl font-black mb-6 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-cloud-arrow-up text-purple-500"></i> 데이터 복구</h3>
-                      <p className="text-[10px] text-slate-400 mb-2 font-bold">* 입력창을 길게 눌러 백업된 데이터를 붙여넣으세요.</p>
+                      
+                      <div className="flex flex-col gap-4 mb-6">
+                        <p className="text-[11px] text-slate-500 font-bold leading-relaxed">* 아래 입력창을 길게 눌러 백업된 데이터를 '붙여넣기' 하거나, 아래 버튼을 눌러 클립보드에서 직접 가져오세요.</p>
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const text = await navigator.clipboard.readText();
+                              if (text) {
+                                setRestoreText(text);
+                                showToast("클립보드에서 데이터를 가져왔습니다");
+                              }
+                            } catch (err) {
+                              alert("클립보드 접근 권한이 없거나 지원되지 않는 브라우저입니다. 수동으로 붙여넣어 주세요.");
+                            }
+                          }}
+                          className="w-full py-3 bg-purple-50 text-purple-600 rounded-xl font-black text-xs border border-purple-100 shadow-sm active:scale-95 transition-all"
+                        >
+                          <i className="fa-solid fa-paste mr-2"></i> 클립보드에서 가져오기
+                        </button>
+                      </div>
+
                       <textarea 
-                        className="w-full h-56 border border-slate-100 rounded-2xl p-4 text-[10px] bg-slate-50 outline-none resize-none font-mono text-slate-500 allow-select" 
-                        placeholder='JSON 데이터를 붙여넣으세요' 
+                        className="w-full h-48 border border-slate-100 rounded-2xl p-4 text-[10px] bg-slate-50 outline-none resize-none font-mono text-slate-500 allow-select" 
+                        placeholder='JSON 데이터를 여기에 붙여넣으세요' 
                         value={restoreText} 
                         onChange={e => setRestoreText(e.target.value)}
+                        onInput={e => setRestoreText(e.target.value)}
                         onPaste={e => {
                           const pasted = e.clipboardData.getData('text');
                           setRestoreText(pasted);
                         }}
                       ></textarea>
+
                       <div className="flex gap-3 mt-6">
                          <button onClick={() => setIsRestoreModalOpen(false)} className="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-500 active:scale-95 transition-all">취소</button>
-                         <button onClick={async () => { try { await dbOps.restoreData(JSON.parse(restoreText)); alert("데이터가 복구되었습니다!"); window.location.reload(); } catch(e){alert("데이터 형식이 올바르지 않습니다.");} }} className="flex-1 py-4 bg-purple-600 text-white rounded-2xl font-black active:scale-95 transition-all shadow-lg">복구 실행</button>
+                         <button onClick={async () => { 
+                             try { 
+                               let rawInput = restoreText.trim();
+                               if (!rawInput) throw new Error("입력값이 비어있습니다.");
+                               
+                               // Robust extraction: find the first '{' and the last '}'
+                               const startIdx = rawInput.indexOf('{');
+                               const endIdx = rawInput.lastIndexOf('}');
+                               
+                               if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+                                 throw new Error("올바른 JSON 형식이 아닙니다. { } 괄호를 포함하여 전체 데이터를 붙여넣어 주세요.");
+                               }
+                               
+                               const cleanJson = rawInput.substring(startIdx, endIdx + 1);
+                               const jsonData = JSON.parse(cleanJson);
+                               
+                               console.log("Starting restore process...");
+                               await dbOps.restoreData(jsonData); 
+                               console.log("Restore successful. Reloading...");
+                               alert("데이터가 복구되었습니다!"); 
+                               window.location.reload(); 
+                             } catch(e){
+                               console.error("Critical Restore Failure:", e);
+                               alert("복구 실패: " + e.message);
+                             } 
+                          }} className="flex-1 py-4 bg-purple-600 text-white rounded-2xl font-black active:scale-95 transition-all shadow-lg">복구 실행</button>
                       </div>
                    </div>
                 </div>
