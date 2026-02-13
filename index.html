@@ -63,8 +63,8 @@
         insGaYoung: '🛡️ 보험(가영)', 
         insEunWoo: '👶 보험(은우)', 
         insSeonWoo: '👶 보험(선우)',
-        eduEunWoo: '🎓 교육비(은우)',
-        eduSeonWoo: '🎓 교육비(선우)',
+        eduEunWoo: '🎓 은우 교육비',
+        eduSeonWoo: '🎓 선우 교육비',
         church: '⛪ 교회회비', 
         allowance: '💸 용돈', 
         savings: '🐖 적금',
@@ -316,7 +316,7 @@
         const renderFixedRow = (k, label) => (
           <div key={k} className="flex flex-col gap-2 py-3 border-b border-slate-50 last:border-0">
             <div className="flex justify-between items-center">
-              <span className="text-slate-700 font-bold text-xs truncate">{label}</span>
+              <span className="text-slate-700 font-bold text-[11px] truncate">{label}</span>
               <select value={tempSheet.fixedExpenses[k].method} disabled={!isEditing}
                 onChange={(e) => handleChange('fixedExpenses', k, 'method', e.target.value)}
                 className={`text-[9px] px-2 py-1 rounded-md bg-transparent outline-none font-bold ${!isEditing ? 'appearance-none' : 'bg-slate-100 border border-slate-200'}`}>
@@ -325,13 +325,13 @@
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col">
-                <span className="text-[8px] text-slate-400 font-black uppercase mb-1 ml-1">지출 계획</span>
+                <span className="text-[8px] text-slate-400 font-black uppercase mb-1 ml-1 tracking-tighter">계획</span>
                 <input type="number" value={tempSheet.fixedExpenses[k].planned === 0 ? '' : tempSheet.fixedExpenses[k].planned} placeholder="0" disabled={!isEditing}
                   onChange={(e) => handleChange('fixedExpenses', k, 'planned', e.target.value)}
                   className="w-full text-right p-2 rounded-xl text-xs bg-purple-50/50 font-black focus:bg-purple-50 outline-none border border-purple-100/50"/>
               </div>
               <div className="flex flex-col">
-                <span className="text-[8px] text-slate-400 font-black uppercase mb-1 ml-1">실제 지출</span>
+                <span className="text-[8px] text-slate-400 font-black uppercase mb-1 ml-1 tracking-tighter">실제</span>
                 <input type="number" value={tempSheet.fixedExpenses[k].actual === 0 ? '' : tempSheet.fixedExpenses[k].actual} placeholder="0" disabled={!isEditing}
                   onChange={(e) => handleChange('fixedExpenses', k, 'actual', e.target.value)}
                   className="w-full text-right p-2 rounded-xl text-xs bg-slate-100 font-black focus:bg-slate-200 outline-none border border-slate-200"/>
@@ -341,7 +341,7 @@
         );
 
         return (
-          <div className="space-y-6 animate-fade-in pb-48">
+          <div className="space-y-6 animate-fade-in pb-80">
             <div className="flex justify-between items-center px-1">
                <div>
                   <h2 className="text-xl font-black text-slate-800 tracking-tight">고정예산 관리</h2>
@@ -357,6 +357,7 @@
                </div>
             </div>
 
+            {/* Income Section */}
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
                <h3 className="text-purple-600 font-black text-sm mb-4 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-coins"></i> 수입 예산</h3>
                {[['💰 주수입', 'main'], ['🎁 기타수입', 'other'], ['🍚 정액급식비', 'meal'], ['⏰ 초과수당', 'overtime']].map(([l, k]) => (
@@ -380,30 +381,30 @@
                   {renderFixedRow('allowance', '💸 용돈')}
                   {renderFixedRow('savings', '🐖 적금')}
 
-                  <div className="pt-4 border-t border-slate-100">
-                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">통신비 그룹</div>
-                    {renderFixedRow('commJiSeung', '📱 지승 통신비')}
-                    {renderFixedRow('commGaYoung', '📱 가영 통신비')}
-                    {renderFixedRow('commInternet', '🌐 인터넷')}
+                  <div className="pt-6 border-t border-slate-100">
+                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">📱 통신비 그룹</div>
+                    {renderFixedRow('commJiSeung', '통신비(지승)')}
+                    {renderFixedRow('commGaYoung', '통신비(가영)')}
+                    {renderFixedRow('commInternet', '인터넷')}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100">
-                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">보험료 그룹</div>
-                    {renderFixedRow('insJiSeung', '🛡️ 지승 보험')}
-                    {renderFixedRow('insGaYoung', '🛡️ 가영 보험')}
-                    {renderFixedRow('insEunWoo', '👶 은우 보험')}
-                    {renderFixedRow('insSeonWoo', '👶 선우 보험')}
-                    <div className="mt-3 p-3 bg-indigo-50 rounded-2xl flex justify-between items-center text-[11px] font-black text-indigo-700">
+                  <div className="pt-6 border-t border-slate-100">
+                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">🛡️ 보험료 그룹</div>
+                    {renderFixedRow('insJiSeung', '보험(지승)')}
+                    {renderFixedRow('insGaYoung', '보험(가영)')}
+                    {renderFixedRow('insEunWoo', '보험(은우)')}
+                    {renderFixedRow('insSeonWoo', '보험(선우)')}
+                    <div className="mt-4 p-4 bg-indigo-50/80 backdrop-blur-sm rounded-2xl flex justify-between items-center text-[11px] font-black text-indigo-700 border border-indigo-100">
                       <span>보험료 실지출 합계</span>
                       <span>{formatMoney(insuranceSum)}</span>
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100">
-                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">교육비 그룹</div>
-                    {renderFixedRow('eduEunWoo', '🎓 은우 교육비')}
-                    {renderFixedRow('eduSeonWoo', '🎓 선우 교육비')}
-                    <div className="mt-3 p-3 bg-emerald-50 rounded-2xl flex justify-between items-center text-[11px] font-black text-emerald-700">
+                  <div className="pt-6 border-t border-slate-100">
+                    <div className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest px-1">🎓 교육비 그룹</div>
+                    {renderFixedRow('eduEunWoo', '은우 교육비')}
+                    {renderFixedRow('eduSeonWoo', '선우 교육비')}
+                    <div className="mt-4 p-4 bg-emerald-50/80 backdrop-blur-sm rounded-2xl flex justify-between items-center text-[11px] font-black text-emerald-700 border border-emerald-100">
                       <span>교육비 실지출 합계</span>
                       <span>{formatMoney(eduSum)}</span>
                     </div>
@@ -412,15 +413,15 @@
             </div>
 
             {/* Sticky Fixed Summary Card */}
-            <div className="fixed bottom-[100px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none">
-              <div className="bg-slate-900 p-5 rounded-3xl shadow-2xl border border-white/10 pointer-events-auto">
+            <div className="fixed bottom-[96px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none z-50">
+              <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[32px] shadow-2xl border border-white/10 pointer-events-auto">
                 <div className="grid grid-cols-2 gap-4 border-b border-white/5 pb-4 mb-4">
                   <div>
-                    <div className="text-[9px] text-slate-500 font-black uppercase mb-1">지출계획 합계</div>
+                    <div className="text-[9px] text-slate-500 font-black uppercase mb-1 tracking-tighter">전체 지출계획</div>
                     <div className="text-white font-black text-sm">{formatMoney(grandPlanned)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[9px] text-slate-500 font-black uppercase mb-1">실지출 합계</div>
+                    <div className="text-[9px] text-slate-500 font-black uppercase mb-1 tracking-tighter">전체 실지출</div>
                     <div className="text-white font-black text-sm">{formatMoney(grandActual)}</div>
                   </div>
                 </div>
@@ -497,7 +498,7 @@
                 )}
              </div>
 
-             <div className="fixed bottom-[92px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none">
+             <div className="fixed bottom-[92px] left-0 right-0 max-w-md mx-auto px-4 pointer-events-none z-50">
                 <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-3xl shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
                     <div className="flex-1">
                         <div className="text-[10px] text-slate-500 font-black mb-1 uppercase tracking-widest">변동지출 합계</div>
@@ -526,7 +527,7 @@
                  </div>
               </div>
            </div>
-           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v12.0</div>
+           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v12.1</div>
         </div>
       );
 
