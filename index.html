@@ -46,13 +46,13 @@
       
       .header-date-input {
         appearance: none;
-        background: #f8fafc;
+        background: #f1f5f9;
         border: none;
-        border-radius: 12px;
-        padding: 8px 12px;
+        border-radius: 10px;
+        padding: 6px 10px;
         font-size: 11px;
-        font-weight: 900;
-        color: #334155;
+        font-weight: 800;
+        color: #475569;
         outline: none;
         cursor: pointer;
       }
@@ -70,18 +70,18 @@
         outline: none;
       }
 
-      /* Chrome-specific style for month/date input */
       input[type="month"]::-webkit-calendar-picker-indicator {
-        opacity: 0.5;
+        opacity: 0.4;
       }
       
       main {
         scroll-behavior: smooth;
       }
 
-      /* Sticky layout positioning */
-      .top-nav-height {
-        height: 110px; /* Header + Nav approx */
+      /* Unified Sticky Header Height Estimation */
+      /* Header: 60px, Nav: 46px => Total ~106px */
+      .top-content-pad {
+        padding-top: 106px;
       }
     </style>
   </head>
@@ -100,7 +100,6 @@
         commGaYoung: '📱 통신비(가영)', 
         commInternet: '🌐 인터넷',
         insJiSeung: '🛡️ 보험(지승)', 
-        insGaYoung: '🛡️ 보험(가영)', 
         insGaEunSeon: '🛡️ 보험(가영,은우,선우)',
         insAll: '🛡️ 보험(지승,가영,은우,선우)',
         eduEunWoo: '🎓 은우 교육비',
@@ -139,7 +138,7 @@
       };
 
       // --- DB SERVICE ---
-      const DB_NAME = 'GarongLedger_v17'; 
+      const DB_NAME = 'GarongLedger_v19'; 
       const DB_VERSION = 1;
 
       const createInitialMonthSheet = (month) => ({
@@ -174,7 +173,6 @@
             req.onsuccess = () => {
                 const sheet = req.result || createInitialMonthSheet(month);
                 if (!sheet.incomes.additional) sheet.incomes.additional = [];
-                // Migration logic for labels
                 const updatedFixed = { ...sheet.fixedExpenses };
                 Object.keys(FIXED_LABELS).forEach(k => {
                   if (!updatedFixed[k]) updatedFixed[k] = { planned: 0, actual: 0, day: 1, method: '현금' };
@@ -277,7 +275,7 @@
         }, {});
 
         return (
-          <div className="space-y-6 animate-fade-in pb-48">
+          <div className="space-y-6 animate-fade-in pb-48 pt-4">
             <div className="bg-gradient-to-br from-purple-800 to-indigo-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                <div className="absolute -top-4 -right-4 opacity-10"><i className="fa-solid fa-calendar-check text-9xl"></i></div>
                <div className="relative z-10">
@@ -310,20 +308,20 @@
 
             <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
                <h3 className="text-slate-800 font-black text-sm mb-6 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-chart-pie text-indigo-500"></i> 변동지출 카테고리별 합계</h3>
-               <div className="space-y-4">
+               <div className="space-y-5">
                   {CATEGORIES.map(c => (
                     <div key={c} className="flex flex-col gap-1.5">
                       <div className="flex justify-between items-center px-1">
                         <span className="text-[10px] font-bold text-slate-500">{c}</span>
                         <span className="text-[11px] font-black text-slate-800">{formatMoney(categoryStats[c] || 0)}</span>
                       </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-400 rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (categoryStats[c] / Math.max(1, mActual)) * 100)}%` }}></div>
+                      <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (categoryStats[c] / Math.max(1, mActual)) * 100)}%` }}></div>
                       </div>
                     </div>
                   ))}
                </div>
-               <div className="mt-6 pt-4 border-t border-dashed border-slate-200 flex justify-between items-center px-1">
+               <div className="mt-8 pt-4 border-t border-dashed border-slate-200 flex justify-between items-center px-1">
                   <span className="text-red-500 text-xs font-black uppercase tracking-tight">불필요한 지출 총계 ⚠️</span>
                   <span className="text-red-600 font-black text-lg">{formatMoney(mUnnecessary)}</span>
                </div>
@@ -341,7 +339,7 @@
         const incomeSum = Object.keys(INCOME_LABELS).reduce((sum, k) => sum + (tempSheet.incomes[k]?.amount || 0), 0) +
                          (tempSheet.incomes.additional || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
         
-        const insuranceSum = ['insJiSeung', 'insGaYoung', 'insGaEunSeon', 'insAll'].reduce((sum, k) => sum + (tempSheet.fixedExpenses[k]?.actual || 0), 0);
+        const insuranceSum = ['insJiSeung', 'insGaEunSeon', 'insAll'].reduce((sum, k) => sum + (tempSheet.fixedExpenses[k]?.actual || 0), 0);
         const eduSum = ['eduEunWoo', 'eduSeonWoo'].reduce((sum, k) => sum + (tempSheet.fixedExpenses[k]?.actual || 0), 0);
 
         const grandPlanned = Object.values(tempSheet.fixedExpenses).reduce((acc, v) => acc + (v.planned || 0), 0);
@@ -434,26 +432,26 @@
         );
 
         return (
-          <div className="space-y-6 animate-fade-in pb-[320px]">
-            {/* Sticky Action Bar for Planner */}
-            <div className="sticky top-[-16px] z-30 pt-4 pb-2 bg-[#f3f4f6]/95 backdrop-blur-md">
-              <div className="flex justify-between items-center px-1">
+          <div className="space-y-6 animate-fade-in pb-[340px]">
+            {/* LAYERED STICKY ACTION BAR: Sticky below the main header container (approx top-106px) */}
+            <div className="sticky top-[106px] z-40 bg-[#f3f4f6]/95 backdrop-blur-md px-1 py-3 border-b border-slate-200/40">
+              <div className="flex justify-between items-center">
                  <div>
-                    <h2 className="text-xl font-black text-slate-800 tracking-tight">고정예산 관리</h2>
-                    <p className="text-[10px] text-indigo-500 font-black mt-1 uppercase tracking-widest">{currentMonth} 결산 시트</p>
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight leading-tight">고정예산 관리</h2>
+                    <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest leading-none mt-1">{currentMonth} 시트</p>
                  </div>
                  <div className="flex gap-2">
                    {isEditing ? (
-                     <><button onClick={() => { setIsEditing(false); setTempSheet(sheet); }} className="px-4 py-2.5 bg-slate-200 text-slate-600 rounded-2xl text-xs font-bold shadow-sm active:scale-95 transition-all">취소</button>
-                     <button onClick={() => { onSave(tempSheet); setIsEditing(false); }} className="px-4 py-2.5 bg-purple-600 text-white rounded-2xl text-xs font-bold shadow-lg shadow-purple-200 active:scale-95 transition-all">저장</button></>
+                     <><button onClick={() => { setIsEditing(false); setTempSheet(sheet); }} className="px-4 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition-all">취소</button>
+                     <button onClick={() => { onSave(tempSheet); setIsEditing(false); }} className="px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-200 active:scale-95 transition-all">저장</button></>
                    ) : (
-                     <button onClick={() => setIsEditing(true)} className="px-5 py-2.5 bg-white border border-purple-100 text-purple-600 rounded-2xl text-xs font-bold shadow-sm hover:bg-purple-50 transition-all active:scale-95">수정하기</button>
+                     <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-white border border-purple-100 text-purple-600 rounded-xl text-xs font-bold shadow-sm hover:bg-purple-50 transition-all active:scale-95">수정하기</button>
                    )}
                  </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
+            <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 mt-2">
                <h3 className="text-purple-600 font-black text-sm mb-6 flex items-center gap-2 uppercase tracking-tighter border-b border-purple-50 pb-2"><i className="fa-solid fa-coins"></i> 수입 예산</h3>
                <div className="space-y-4">
                  {Object.keys(INCOME_LABELS).map((k) => (
@@ -468,19 +466,19 @@
                      </div>
                      <input type="text" value={tempSheet.incomes[k].amount === 0 ? '' : tempSheet.incomes[k].amount.toLocaleString()} placeholder="0" disabled={!isEditing}
                        onChange={(e) => handleIncomeChange(k, 'amount', e.target.value)}
-                       className="text-right p-3 rounded-2xl bg-slate-50 w-full font-black text-slate-800 outline-none focus:bg-purple-50 transition-all text-sm border border-slate-100" />
+                       className="text-right p-3 rounded-2xl bg-slate-50 w-full font-black text-slate-800 outline-none focus:bg-purple-50 transition-all text-sm border border-slate-100 focus:border-purple-200" />
                    </div>
                  ))}
                  
                  <div className="pt-4">
                     <div className="flex justify-between items-center mb-4">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">추가 수입 항목</span>
-                      {isEditing && <button onClick={addIncomeItem} className="text-[9px] bg-purple-50 text-purple-600 px-3 py-2 rounded-xl font-black shadow-sm">+ 항목 추가</button>}
+                      {isEditing && <button onClick={addIncomeItem} className="text-[9px] bg-purple-50 text-purple-600 px-3 py-2 rounded-xl font-black shadow-sm">+ 추가</button>}
                     </div>
                     {tempSheet.incomes.additional.map(item => (
                       <div key={item.id} className="flex flex-col gap-3 p-4 bg-slate-50/50 rounded-2xl mb-3 border border-slate-100 shadow-sm animate-fade-in">
                          <div className="flex justify-between items-center">
-                           <input type="text" value={item.desc} placeholder="수입 항목 명칭" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'desc', e.target.value)}
+                           <input type="text" value={item.desc} placeholder="수입 명칭" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'desc', e.target.value)}
                              className="flex-1 bg-transparent text-xs font-bold outline-none" />
                            {isEditing && <button onClick={() => removeIncomeItem(item.id)} className="text-red-400 text-lg px-1 active:scale-90"><i className="fa-solid fa-circle-minus"></i></button>}
                          </div>
@@ -514,55 +512,45 @@
                   {renderFixedRow('savings', '🐖 적금')}
 
                   <div className="pt-8 border-t border-slate-100">
-                    <div className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1 flex justify-between items-center">
-                      <span>📱 통신비 그룹</span>
-                      <i className="fa-solid fa-signal text-[8px]"></i>
-                    </div>
-                    {renderFixedRow('commJiSeung', '지승 통신비')}
-                    {renderFixedRow('commGaYoung', '가영 통신비')}
+                    <div className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1">📱 통신비 그룹</div>
+                    {renderFixedRow('commJiSeung', '통신비(지승)')}
+                    {renderFixedRow('commGaYoung', '통신비(가영)')}
                     {renderFixedRow('commInternet', '인터넷')}
                   </div>
 
                   <div className="pt-8 border-t border-slate-100">
-                    <div className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1 flex justify-between items-center">
-                      <span>🛡️ 보험료 그룹</span>
-                      <i className="fa-solid fa-shield-halved text-[8px]"></i>
-                    </div>
-                    {renderFixedRow('insJiSeung', '지승 보험')}
-                    {renderFixedRow('insGaYoung', '가영 보험')}
-                    {renderFixedRow('insGaEunSeon', '가영,은우,선우 보험')}
-                    {renderFixedRow('insAll', '지승,가영,은우,선우 보험')}
-                    <div className="mt-4 p-4 bg-indigo-50/80 backdrop-blur-sm rounded-2xl flex justify-between items-center text-[11px] font-black text-indigo-700 border border-indigo-100 shadow-sm">
+                    <div className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1">🛡️ 보험료 그룹</div>
+                    {renderFixedRow('insJiSeung', '보험(지승)')}
+                    {renderFixedRow('insGaEunSeon', '보험(가영,은우,선우)')}
+                    {renderFixedRow('insAll', '보험(지승,가영,은우,선우)')}
+                    <div className="mt-4 p-4 bg-indigo-50/80 rounded-2xl flex justify-between items-center text-[11px] font-black text-indigo-700 border border-indigo-100">
                       <span>보험료 실지출 합계</span>
                       <span>{formatMoney(insuranceSum)}</span>
                     </div>
                   </div>
 
                   <div className="pt-8 border-t border-slate-100">
-                    <div className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1 flex justify-between items-center">
-                      <span>🎓 교육비 그룹</span>
-                      <i className="fa-solid fa-graduation-cap text-[8px]"></i>
-                    </div>
+                    <div className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1">🎓 교육비 그룹</div>
                     {renderFixedRow('eduEunWoo', '은우 교육비')}
                     {renderFixedRow('eduSeonWoo', '선우 교육비')}
-                    <div className="mt-4 p-4 bg-emerald-50/80 backdrop-blur-sm rounded-2xl flex justify-between items-center text-[11px] font-black text-emerald-700 border border-emerald-100 shadow-sm">
+                    <div className="mt-4 p-4 bg-emerald-50/80 rounded-2xl flex justify-between items-center text-[11px] font-black text-emerald-700 border border-emerald-100">
                       <span>교육비 실지출 합계</span>
                       <span>{formatMoney(eduSum)}</span>
                     </div>
                   </div>
                </div>
 
-               {/* Payment Method Stats for Fixed Expenses */}
+               {/* Payment Stats for Fixed Budget */}
                <div className="mt-10 pt-8 border-t border-slate-100">
-                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4">고정지출 결제수단 통계</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center col-span-2">
-                        <div className="text-[10px] text-slate-400 font-bold mb-1 uppercase tracking-tighter">💳 카드(롯데/현대/신한/체크) 합계</div>
-                        <div className="text-base font-black text-slate-800">{formatMoney(cardFixedTotal)}</div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-4">고정지출 실시간 통계</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center">
+                        <span className="text-[10px] text-slate-500 font-black uppercase tracking-tighter">💳 카드 고정지출 합계</span>
+                        <span className="text-sm font-black text-slate-800">{formatMoney(cardFixedTotal)}</span>
                     </div>
-                    <div className="p-3 bg-indigo-50/80 rounded-2xl border border-indigo-100 flex flex-col items-center col-span-2">
-                        <div className="text-[10px] text-indigo-400 font-bold mb-1 uppercase tracking-tighter">💸 현금(계좌이체 등) 합계</div>
-                        <div className="text-base font-black text-indigo-600">{formatMoney(cashFixedTotal)}</div>
+                    <div className="p-4 bg-indigo-50/80 rounded-2xl border border-indigo-100 flex justify-between items-center">
+                        <span className="text-[10px] text-indigo-400 font-black uppercase tracking-tighter">💸 현금 고정지출 합계</span>
+                        <span className="text-sm font-black text-indigo-600">{formatMoney(cashFixedTotal)}</span>
                     </div>
                   </div>
                </div>
@@ -661,7 +649,7 @@
         return (
           <div className="space-y-4 animate-fade-in pb-[280px]">
              {/* Sticky Sub-Header for Ledger */}
-             <div className="sticky top-[-16px] bg-[#f3f4f6]/95 backdrop-blur-md pt-2 pb-2 z-30 space-y-3 px-1">
+             <div className="sticky top-[106px] bg-[#f3f4f6]/95 backdrop-blur-md pt-3 pb-3 z-30 space-y-3 px-1">
                 <div className="flex bg-slate-200/50 p-1 rounded-2xl shadow-inner">
                    <button onClick={() => setViewMode('daily')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 내역</button>
                    <button onClick={() => setViewMode('monthly')} className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별 전체</button>
@@ -696,7 +684,7 @@
       };
 
       const Settings = ({ onBackup, onRestore, onReset }) => (
-        <div className="space-y-6 animate-fade-in pb-40">
+        <div className="space-y-6 animate-fade-in pb-40 pt-4">
            <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
               <h3 className="text-slate-800 font-black text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-gears text-indigo-500"></i> 데이터 관리</h3>
               <div className="grid grid-cols-1 gap-3">
@@ -707,7 +695,7 @@
                  </div>
               </div>
            </div>
-           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v17.0</div>
+           <div className="text-center text-[10px] text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v19.0</div>
         </div>
       );
 
@@ -812,14 +800,15 @@
 
         return (
           <div className="max-w-md mx-auto min-h-screen bg-[#f3f4f6] shadow-2xl overflow-hidden flex flex-col relative font-sans">
-             {/* STICKY HEADER SECTION (Includes Header + Tabs) */}
-             <div className="sticky top-0 z-40 bg-white shadow-sm border-b border-slate-50">
+             
+             {/* STICKY MAIN HEADER CONTAINER: FIXED top-0 z-50 */}
+             <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200">
                <header className="px-6 py-4 flex justify-between items-center">
                   <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 tracking-tighter" onClick={() => window.location.reload()}>Garong's Ledger</h1>
                   <input type="month" value={currentMonth} onChange={handleHeaderMonthChange} className="header-date-input" />
                </header>
                
-               {/* NAVIGATION TABS AT TOP (Sticky) */}
+               {/* NAVIGATION TABS IN HEADER */}
                <nav className="flex justify-around items-center py-2 border-t border-slate-50">
                   {['dashboard', 'planner', 'ledger', 'settings'].map(t => (
                       <button key={t} onClick={() => setTab(t)} className={`flex flex-col items-center w-1/4 py-1 transition-all ${tab === t ? 'text-purple-600' : 'text-slate-300'} active:scale-95`}>
@@ -830,6 +819,7 @@
                </nav>
              </div>
 
+             {/* MAIN CONTENT: Needs padding-top to account for fixed header (approx 106px) */}
              <main className="flex-1 p-4 overflow-y-auto no-scrollbar relative flex flex-col scroll-smooth">
                 {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} />}
                 {tab === 'planner' && <Planner sheet={monthSheet} onSave={handleSaveMonthSheet} currentMonth={currentMonth} />}
@@ -844,39 +834,39 @@
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center animate-fade-in">
                    <div className="bg-white w-full sm:w-[400px] rounded-t-[40px] sm:rounded-[40px] p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto no-scrollbar">
                       <div className="flex justify-between items-center mb-6">
-                         <h3 className="text-2xl font-black text-slate-800 tracking-tight">{editingTx ? '변동지출 수정' : '새 변동지출 기록'}</h3>
+                         <h3 className="text-2xl font-black text-slate-800 tracking-tight">{editingTx ? '지출 내역 수정' : '새 지출 기록'}</h3>
                          <button onClick={() => setIsAddModalOpen(false)} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90 transition-transform"><i className="fa-solid fa-xmark"></i></button>
                       </div>
                       <form onSubmit={handleAddTransaction} className="space-y-4">
                          <input type="hidden" name="txId" defaultValue={editingTx?.id} />
                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Date</label>
+                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">지출 일자</label>
                             <input type="date" name="date" defaultValue={editingTx?.date || selectedDate} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700 border border-slate-100 focus:border-purple-200 transition-colors" />
                          </div>
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Category</label>
+                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">카테고리</label>
                                 <select name="category" defaultValue={editingTx?.category || '식비'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100">
                                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Payment Method</label>
+                                <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">결제 수단</label>
                                 <select name="paymentMethod" defaultValue={editingTx?.paymentMethod || '체크카드'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100">
                                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
                             </div>
                          </div>
                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Description</label>
-                            <input type="text" name="desc" placeholder="내역을 입력하세요" defaultValue={editingTx?.desc} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-purple-200" />
+                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">내용</label>
+                            <input type="text" name="desc" placeholder="내용을 입력하세요" defaultValue={editingTx?.desc} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-purple-200" />
                          </div>
                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Memo (Optional)</label>
-                            <textarea name="memo" placeholder="상세 메모를 입력하세요" defaultValue={editingTx?.memo} rows="2" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 resize-none focus:border-purple-200 transition-colors"></textarea>
+                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">메모 (선택사항)</label>
+                            <textarea name="memo" placeholder="메모를 입력하세요" defaultValue={editingTx?.memo} rows="2" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 resize-none focus:border-purple-200 transition-colors"></textarea>
                          </div>
                          <div className="space-y-1.5">
-                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Amount</label>
+                            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">금액 (원)</label>
                             <input type="text" name="amount" placeholder="0" defaultValue={editingTx?.amount?.toLocaleString()} required 
                               onChange={(e) => { e.target.value = cleanMoney(e.target.value).toLocaleString(); }}
                               className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-xl text-purple-600 border border-slate-100 focus:border-purple-200 transition-colors" />
@@ -893,7 +883,7 @@
                                 </div>
                             )}
                          </div>
-                         <button type="submit" className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-purple-100 mt-2 active:scale-[0.98] transition-all">내역 저장하기</button>
+                         <button type="submit" className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-purple-100 mt-2 active:scale-[0.98] transition-all">기록 저장하기</button>
                       </form>
                    </div>
                 </div>
@@ -902,8 +892,8 @@
              {isRestoreModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 animate-fade-in">
                    <div className="bg-white w-full max-w-md rounded-[32px] p-8 shadow-2xl">
-                      <h3 className="text-xl font-black mb-6 flex items-center gap-2"><i className="fa-solid fa-cloud-arrow-up text-purple-500"></i> 데이터 복구</h3>
-                      <textarea className="w-full h-56 border border-slate-100 rounded-2xl p-4 text-[10px] bg-slate-50 outline-none resize-none font-mono text-slate-500" placeholder='백업된 JSON 데이터를 붙여넣으세요' value={restoreText} onChange={e => setRestoreText(e.target.value)}></textarea>
+                      <h3 className="text-xl font-black mb-6 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-cloud-arrow-up text-purple-500"></i> 데이터 복구</h3>
+                      <textarea className="w-full h-56 border border-slate-100 rounded-2xl p-4 text-[10px] bg-slate-50 outline-none resize-none font-mono text-slate-500" placeholder='JSON 데이터를 붙여넣으세요' value={restoreText} onChange={e => setRestoreText(e.target.value)}></textarea>
                       <div className="flex gap-3 mt-6">
                          <button onClick={() => setIsRestoreModalOpen(false)} className="flex-1 py-4 bg-slate-100 rounded-2xl font-black text-slate-500 active:scale-95 transition-all">취소</button>
                          <button onClick={async () => { try { await dbOps.restoreData(JSON.parse(restoreText)); alert("데이터가 복구되었습니다!"); window.location.reload(); } catch(e){alert("데이터 형식이 올바르지 않습니다.");} }} className="flex-1 py-4 bg-purple-600 text-white rounded-2xl font-black active:scale-95 transition-all shadow-lg">복구 실행</button>
@@ -919,7 +909,7 @@
                             <i className="fa-solid fa-trash-can text-2xl"></i>
                         </div>
                         <h3 className="text-xl font-black text-slate-800 mb-2">삭제 확인</h3>
-                        <p className="text-sm text-slate-400 mb-8 font-medium px-4">이 지출 항목을 삭제하시겠습니까?<br/>삭제 후에는 복구가 불가능합니다.</p>
+                        <p className="text-sm text-slate-400 mb-8 font-medium px-4 leading-relaxed">이 지출 항목을 삭제하시겠습니까?<br/>삭제 후에는 복구가 불가능합니다.</p>
                         <div className="flex gap-4">
                             <button onClick={() => setDeleteTargetId(null)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black active:scale-95 transition-all">취소</button>
                             <button onClick={confirmDelete} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black active:scale-95 transition-all shadow-lg">삭제하기</button>
