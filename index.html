@@ -88,14 +88,6 @@
         transform: scale(1.2);
       }
 
-      .toast-enter {
-        animation: toastIn 0.3s ease-out forwards;
-      }
-      @keyframes toastIn {
-        from { opacity: 0; transform: translateY(20px) translateX(-50%); }
-        to { opacity: 1; transform: translateY(0) translateX(-50%); }
-      }
-
       .allow-select {
         user-select: text !important;
         -webkit-user-select: text !important;
@@ -105,9 +97,8 @@
       .money-text {
         white-space: nowrap !important;
         display: inline-block;
-        overflow: hidden;
-        text-overflow: clip;
         flex-shrink: 0;
+        /* Removed overflow-hidden and clip to prevent cutting off numbers */
       }
     </style>
   </head>
@@ -310,20 +301,21 @@
 
         return (
           <div className="animate-fade-in pb-48 flex flex-col gap-6 pt-6">
-            <div className="bg-gradient-to-br from-purple-800 to-indigo-700 rounded-[36px] p-8 text-white shadow-xl relative overflow-hidden">
+            <div className="bg-gradient-to-br from-purple-800 to-indigo-700 rounded-[36px] p-6 text-white shadow-xl relative overflow-hidden">
                <div className="absolute -top-4 -right-4 opacity-10"><i className="fa-solid fa-calendar-check text-9xl"></i></div>
                <div className="relative z-10">
-                 <h2 className="text-indigo-200 text-base font-bold uppercase tracking-wider">{currentMonth}월 총 잔액</h2>
-                 <h1 className="text-3xl font-black mt-2 money-text leading-tight">{formatMoney(mBalance)}</h1>
+                 <h2 className="text-indigo-200 text-sm font-bold uppercase tracking-wider">{currentMonth}월 총 잔액</h2>
+                 {/* font-size reduced slightly and width ensured to prevent truncation */}
+                 <h1 className="text-2xl font-black mt-2 money-text leading-tight">{formatMoney(mBalance)}</h1>
                </div>
-               <div className="mt-10 grid grid-cols-2 gap-4 relative z-10">
-                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 overflow-hidden">
-                   <div className="text-sm text-indigo-200 mb-1">월 수입</div>
-                   <div className="font-bold text-xl money-text">{formatMoney(mIncome)}</div>
+               <div className="mt-8 grid grid-cols-2 gap-4 relative z-10">
+                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 min-w-0">
+                   <div className="text-[12px] text-indigo-200 mb-1">월 수입</div>
+                   <div className="font-bold text-lg money-text leading-none">{formatMoney(mIncome)}</div>
                  </div>
-                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 overflow-hidden">
-                   <div className="text-sm text-indigo-200 mb-1">월 지출(합계)</div>
-                   <div className="font-bold text-xl money-text">{formatMoney(mFixed + mActual)}</div>
+                 <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 min-w-0">
+                   <div className="text-[12px] text-indigo-200 mb-1">월 지출(합계)</div>
+                   <div className="font-bold text-lg money-text leading-none">{formatMoney(mFixed + mActual)}</div>
                  </div>
                </div>
             </div>
@@ -332,8 +324,8 @@
                <h3 className="text-slate-800 font-black text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter"><i className="fa-solid fa-credit-card text-purple-500"></i> 결제 수단별 통합 실지출</h3>
                <div className="space-y-4">
                   {PAYMENT_METHODS.map(m => (
-                    <div key={m} className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl">
-                      <span className="text-slate-500 text-base font-bold">{m}</span>
+                    <div key={m} className="flex justify-between items-center p-5 bg-slate-50 rounded-2xl gap-2">
+                      <span className="text-slate-500 text-base font-bold whitespace-nowrap">{m}</span>
                       <span className="font-black text-slate-800 text-lg money-text">{formatMoney(methodStats[m] || 0)}</span>
                     </div>
                   ))}
@@ -345,19 +337,19 @@
                <div className="space-y-6">
                   {CATEGORIES.map(c => (
                     <div key={c} className="flex flex-col gap-3">
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-base font-bold text-slate-500">{c}</span>
-                        <span className="text-base font-black text-slate-800 money-text">{formatMoney(categoryStats[c] || 0)}</span>
+                      <div className="flex justify-between items-center px-1 gap-4">
+                        <span className="text-base font-bold text-slate-500 flex-shrink-0">{c}</span>
+                        <span className="text-base font-black text-slate-800 money-text text-right">{formatMoney(categoryStats[c] || 0)}</span>
                       </div>
-                      <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div className="h-full bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (categoryStats[c] / Math.max(1, mActual)) * 100)}%` }}></div>
                       </div>
                     </div>
                   ))}
                </div>
-               <div className="mt-10 pt-6 border-t border-dashed border-slate-200 flex justify-between items-center px-1">
-                  <span className="text-red-500 text-base font-black uppercase tracking-tight">불필요한 지출 총계 ⚠️</span>
-                  <span className="text-red-600 font-black text-2xl money-text">{formatMoney(mUnnecessary)}</span>
+               <div className="mt-10 pt-6 border-t border-dashed border-slate-200 flex justify-between items-center px-1 gap-2">
+                  <span className="text-red-500 text-sm font-black uppercase tracking-tight whitespace-nowrap">불필요한 지출 총계 ⚠️</span>
+                  <span className="text-red-600 font-black text-xl money-text">{formatMoney(mUnnecessary)}</span>
                </div>
             </div>
           </div>
@@ -433,9 +425,9 @@
 
         const renderFixedRow = (k, label) => (
           <div key={k} className="flex flex-col gap-4 py-6 border-b border-slate-100 last:border-0">
-            <div className="flex justify-between items-center">
-              <div className="flex flex-col">
-                <span className="text-slate-700 font-bold text-base truncate mb-3">{label}</span>
+            <div className="flex justify-between items-center gap-4">
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-slate-700 font-bold text-sm truncate mb-2">{label}</span>
                 <select value={tempSheet.fixedExpenses[k].day} disabled={!isEditing}
                   onChange={(e) => handleFixedChange(k, 'day', e.target.value)}
                   className="day-select w-20">
@@ -444,22 +436,22 @@
               </div>
               <select value={tempSheet.fixedExpenses[k].method} disabled={!isEditing}
                 onChange={(e) => handleFixedChange(k, 'method', e.target.value)}
-                className={`text-[15px] px-4 py-2 rounded-xl bg-transparent outline-none font-bold ${!isEditing ? 'appearance-none' : 'bg-slate-100 border border-slate-200'}`}>
+                className={`text-[13px] px-3 py-2 rounded-xl bg-transparent outline-none font-bold ${!isEditing ? 'appearance-none' : 'bg-slate-100 border border-slate-200'}`}>
                 {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-5">
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col">
-                <span className="text-[12px] text-slate-400 font-black uppercase mb-2 ml-1 tracking-tighter">계획</span>
+                <span className="text-[11px] text-slate-400 font-black uppercase mb-1 ml-1 tracking-tighter">계획</span>
                 <input type="text" value={tempSheet.fixedExpenses[k].planned === 0 ? '' : tempSheet.fixedExpenses[k].planned.toLocaleString()} placeholder="0" disabled={!isEditing}
                   onChange={(e) => handleFixedChange(k, 'planned', e.target.value)}
-                  className="w-full text-right p-4 rounded-2xl text-base bg-purple-50/50 font-black focus:bg-purple-50 outline-none border border-purple-100/50 transition-colors"/>
+                  className="w-full text-right p-3 rounded-2xl text-sm bg-purple-50/50 font-black focus:bg-purple-50 outline-none border border-purple-100/50 transition-colors"/>
               </div>
               <div className="flex flex-col">
-                <span className="text-[12px] text-slate-400 font-black uppercase mb-2 ml-1 tracking-tighter">실제</span>
+                <span className="text-[11px] text-slate-400 font-black uppercase mb-1 ml-1 tracking-tighter">실제</span>
                 <input type="text" value={tempSheet.fixedExpenses[k].actual === 0 ? '' : tempSheet.fixedExpenses[k].actual.toLocaleString()} placeholder="0" disabled={!isEditing}
                   onChange={(e) => handleFixedChange(k, 'actual', e.target.value)}
-                  className="w-full text-right p-4 rounded-2xl text-base bg-slate-100 font-black focus:bg-slate-200 outline-none border border-slate-200 transition-colors"/>
+                  className="w-full text-right p-3 rounded-2xl text-sm bg-slate-100 font-black focus:bg-slate-200 outline-none border border-slate-200 transition-colors"/>
               </div>
             </div>
           </div>
@@ -468,30 +460,30 @@
         return (
           <div className="animate-fade-in pb-[340px] flex flex-col">
             <div className="sticky top-[140px] z-40 bg-[#f3f4f6] px-1 py-5 border-b border-slate-200 shadow-sm">
-              <div className="flex justify-between items-center px-1">
-                 <div>
-                    <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-tight">고정예산 관리</h2>
-                    <p className="text-sm text-indigo-500 font-black uppercase tracking-widest leading-none mt-2">{currentMonth} 시트</p>
+              <div className="flex justify-between items-center px-1 gap-2">
+                 <div className="min-w-0">
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight leading-tight truncate">고정예산 관리</h2>
+                    <p className="text-[11px] text-indigo-500 font-black uppercase tracking-widest leading-none mt-1">{currentMonth} 시트</p>
                  </div>
-                 <div className="flex gap-3">
+                 <div className="flex gap-2 shrink-0">
                    {isEditing ? (
-                     <><button onClick={() => { setIsEditing(false); setTempSheet(sheet); }} className="px-6 py-3 bg-slate-200 text-slate-600 rounded-2xl text-base font-bold shadow-sm active:scale-95 transition-all">취소</button>
-                     <button onClick={() => { onSave(tempSheet); setIsEditing(false); }} className="px-6 py-3 bg-purple-600 text-white rounded-2xl text-base font-bold shadow-lg shadow-purple-200 active:scale-95 transition-all">저장</button></>
+                     <><button onClick={() => { setIsEditing(false); setTempSheet(sheet); }} className="px-4 py-2 bg-slate-200 text-slate-600 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all">취소</button>
+                     <button onClick={() => { onSave(tempSheet); setIsEditing(false); }} className="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-bold shadow-lg active:scale-95 transition-all">저장</button></>
                    ) : (
-                     <button onClick={() => setIsEditing(true)} className="px-6 py-3 bg-white border border-purple-100 text-purple-600 rounded-2xl text-base font-bold shadow-sm hover:bg-purple-50 transition-all active:scale-95">수정하기</button>
+                     <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-white border border-purple-100 text-purple-600 rounded-xl text-sm font-bold shadow-sm hover:bg-purple-50 transition-all active:scale-95">수정</button>
                    )}
                  </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-10 pt-6">
-              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-                <h3 className="text-purple-600 font-black text-lg mb-8 flex items-center gap-2 uppercase tracking-tighter border-b border-purple-50 pb-3"><i className="fa-solid fa-coins"></i> 수입 예산</h3>
-                <div className="space-y-8">
+              <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
+                <h3 className="text-purple-600 font-black text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter border-b border-purple-50 pb-3"><i className="fa-solid fa-coins"></i> 수입 예산</h3>
+                <div className="space-y-6">
                   {Object.keys(INCOME_LABELS).map((k) => (
-                    <div key={k} className="flex flex-col gap-4 pb-6 border-b border-slate-50 last:border-0">
-                      <div className="flex justify-between items-center">
-                          <label className="text-slate-600 text-base font-bold">{INCOME_LABELS[k]}</label>
+                    <div key={k} className="flex flex-col gap-3 pb-4 border-b border-slate-50 last:border-0">
+                      <div className="flex justify-between items-center gap-2">
+                          <label className="text-slate-600 text-sm font-bold truncate">{INCOME_LABELS[k]}</label>
                           <select value={tempSheet.incomes[k].day} disabled={!isEditing}
                             onChange={(e) => handleIncomeChange(k, 'day', e.target.value)}
                             className="day-select">
@@ -500,44 +492,44 @@
                       </div>
                       <input type="text" value={tempSheet.incomes[k].amount === 0 ? '' : tempSheet.incomes[k].amount.toLocaleString()} placeholder="0" disabled={!isEditing}
                         onChange={(e) => handleIncomeChange(k, 'amount', e.target.value)}
-                        className="text-right p-5 rounded-2xl bg-slate-50 w-full font-black text-slate-800 outline-none focus:bg-purple-50 transition-all text-lg border border-slate-100" />
+                        className="text-right p-4 rounded-2xl bg-slate-50 w-full font-black text-slate-800 outline-none focus:bg-purple-50 transition-all text-base border border-slate-100" />
                     </div>
                   ))}
                   
-                  <div className="pt-6">
-                      <div className="flex justify-between items-center mb-6">
-                        <span className="text-sm font-black text-slate-400 uppercase tracking-widest px-1">추가 수입 항목</span>
-                        {isEditing && <button onClick={addIncomeItem} className="text-sm bg-purple-50 text-purple-600 px-5 py-3 rounded-xl font-black shadow-sm">+ 추가</button>}
+                  <div className="pt-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">추가 수입 항목</span>
+                        {isEditing && <button onClick={addIncomeItem} className="text-[11px] bg-purple-50 text-purple-600 px-3 py-2 rounded-lg font-black shadow-sm">+ 추가</button>}
                       </div>
                       {tempSheet.incomes.additional.map(item => (
-                        <div key={item.id} className="flex flex-col gap-5 p-6 bg-slate-50/50 rounded-2xl mb-5 border border-slate-100 shadow-sm animate-fade-in">
-                          <div className="flex justify-between items-center">
+                        <div key={item.id} className="flex flex-col gap-4 p-4 bg-slate-50/50 rounded-2xl mb-4 border border-slate-100 shadow-sm animate-fade-in">
+                          <div className="flex justify-between items-center gap-2">
                             <input type="text" value={item.desc} placeholder="수입 명칭" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'desc', e.target.value)}
-                              className="flex-1 bg-transparent text-base font-bold outline-none" />
-                            {isEditing && <button onClick={() => removeIncomeItem(item.id)} className="text-red-400 text-3xl px-1 active:scale-90"><i className="fa-solid fa-circle-minus"></i></button>}
+                              className="flex-1 bg-transparent text-sm font-bold outline-none truncate" />
+                            {isEditing && <button onClick={() => removeIncomeItem(item.id)} className="text-red-400 text-2xl px-1 active:scale-90"><i className="fa-solid fa-circle-minus"></i></button>}
                           </div>
-                          <div className="flex justify-between items-center gap-5">
-                              <select value={item.day} disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'day', e.target.value)} className="day-select w-24">
+                          <div className="flex justify-between items-center gap-4">
+                              <select value={item.day} disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'day', e.target.value)} className="day-select w-20">
                                 {DAYS.map(d => <option key={d} value={d}>{d}일</option>)}
                               </select>
                               <input type="text" value={item.amount === 0 ? '' : item.amount.toLocaleString()} placeholder="0" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'amount', e.target.value)}
-                                className="w-full bg-white p-4 rounded-2xl text-base font-black text-right outline-none shadow-sm border border-slate-100" />
+                                className="flex-1 bg-white p-3 rounded-2xl text-sm font-black text-right outline-none shadow-sm border border-slate-100 min-w-0" />
                           </div>
                         </div>
                       ))}
                   </div>
                 </div>
 
-                <div className="mt-12 p-6 bg-indigo-50/80 rounded-2xl flex justify-between items-center border border-indigo-100 shadow-sm overflow-hidden">
-                    <span className="text-base font-black text-indigo-600">수입 예산 총계</span>
-                    <span className="font-black text-indigo-700 text-2xl money-text">{formatMoney(incomeSum)}</span>
+                <div className="mt-8 p-5 bg-indigo-50/80 rounded-2xl flex justify-between items-center border border-indigo-100 gap-4">
+                    <span className="text-sm font-black text-indigo-600 whitespace-nowrap">수입 예산 총계</span>
+                    <span className="font-black text-indigo-700 text-xl money-text text-right">{formatMoney(incomeSum)}</span>
                 </div>
               </div>
 
-              <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-                <h3 className="text-purple-600 font-black text-lg mb-8 flex items-center gap-2 uppercase tracking-tighter border-b border-purple-50 pb-3"><i className="fa-solid fa-receipt"></i> 고정 지출 내역</h3>
+              <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
+                <h3 className="text-purple-600 font-black text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter border-b border-purple-50 pb-3"><i className="fa-solid fa-receipt"></i> 고정 지출 내역</h3>
                 
-                <div className="space-y-2">
+                <div className="space-y-1">
                     {renderFixedRow('loanInterest', '🏦 대출이자')}
                     {renderFixedRow('maintenance', '🏢 관리비')}
                     {renderFixedRow('gas', '🔥 도시가스')}
@@ -545,45 +537,45 @@
                     {renderFixedRow('allowance', '💸 용돈')}
                     {renderFixedRow('savings', '🐖 적금')}
 
-                    <div className="pt-12 border-t border-slate-100">
-                      <div className="text-sm font-black text-slate-400 mb-6 uppercase tracking-widest px-1">📱 통신비 그룹</div>
+                    <div className="pt-8 border-t border-slate-100">
+                      <div className="text-[11px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1">📱 통신비 그룹</div>
                       {renderFixedRow('commJiSeung', '통신비(지승)')}
                       {renderFixedRow('commGaYoung', '통신비(가영)')}
                       {renderFixedRow('commInternet', '인터넷')}
                     </div>
 
-                    <div className="pt-12 border-t border-slate-100">
-                      <div className="text-sm font-black text-slate-400 mb-6 uppercase tracking-widest px-1">🛡️ 보험료 그룹</div>
+                    <div className="pt-8 border-t border-slate-100">
+                      <div className="text-[11px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1">🛡️ 보험료 그룹</div>
                       {renderFixedRow('insJiSeung', '보험(지승)')}
                       {renderFixedRow('insGaEunSeon', '보험(가영,은우,선우)')}
                       {renderFixedRow('insAll', '보험(지승,가영,은우,선우)')}
-                      <div className="mt-8 p-6 bg-indigo-50/80 rounded-2xl flex justify-between items-center text-base font-black text-indigo-700 border border-indigo-100 overflow-hidden">
-                        <span>보험료 실지출 합계</span>
-                        <span className="money-text">{formatMoney(insuranceSum)}</span>
+                      <div className="mt-6 p-5 bg-indigo-50/80 rounded-2xl flex justify-between items-center text-sm font-black text-indigo-700 border border-indigo-100 gap-4">
+                        <span className="whitespace-nowrap">보험료 실지출 합계</span>
+                        <span className="money-text text-right">{formatMoney(insuranceSum)}</span>
                       </div>
                     </div>
 
-                    <div className="pt-12 border-t border-slate-100">
-                      <div className="text-sm font-black text-slate-400 mb-6 uppercase tracking-widest px-1">🎓 교육비 그룹</div>
+                    <div className="pt-8 border-t border-slate-100">
+                      <div className="text-[11px] font-black text-slate-400 mb-4 uppercase tracking-widest px-1">🎓 교육비 그룹</div>
                       {renderFixedRow('eduEunWoo', '은우 교육비')}
                       {renderFixedRow('eduSeonWoo', '선우 교육비')}
-                      <div className="mt-8 p-6 bg-emerald-50/80 rounded-2xl flex justify-between items-center text-base font-black text-emerald-700 border border-emerald-100 overflow-hidden">
-                        <span>교육비 실지출 합계</span>
-                        <span className="money-text">{formatMoney(eduSum)}</span>
+                      <div className="mt-6 p-5 bg-emerald-50/80 rounded-2xl flex justify-between items-center text-sm font-black text-emerald-700 border border-emerald-100 gap-4">
+                        <span className="whitespace-nowrap">교육비 실지출 합계</span>
+                        <span className="money-text text-right">{formatMoney(eduSum)}</span>
                       </div>
                     </div>
                 </div>
 
-                <div className="mt-14 pt-12 border-t border-slate-100">
-                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest px-1 mb-8">고정지출 실시간 통계</h4>
-                    <div className="grid grid-cols-1 gap-5">
-                      <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center overflow-hidden">
-                          <span className="text-sm text-slate-500 font-black uppercase tracking-tighter">💳 카드 합계</span>
-                          <span className="text-lg font-black text-slate-800 money-text">{formatMoney(cardFixedTotal)}</span>
+                <div className="mt-12 pt-10 border-t border-slate-100">
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 mb-6">고정지출 실시간 통계</h4>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center gap-4">
+                          <span className="text-[12px] text-slate-500 font-black uppercase tracking-tighter whitespace-nowrap">💳 카드 합계</span>
+                          <span className="text-base font-black text-slate-800 money-text text-right">{formatMoney(cardFixedTotal)}</span>
                       </div>
-                      <div className="p-6 bg-indigo-50/80 rounded-2xl border border-indigo-100 flex justify-between items-center overflow-hidden">
-                          <span className="text-sm text-indigo-400 font-black uppercase tracking-tighter">💸 현금 합계</span>
-                          <span className="text-lg font-black text-indigo-600 money-text">{formatMoney(cashFixedTotal)}</span>
+                      <div className="p-5 bg-indigo-50/80 rounded-2xl border border-indigo-100 flex justify-between items-center gap-4">
+                          <span className="text-[12px] text-indigo-400 font-black uppercase tracking-tighter whitespace-nowrap">💸 현금 합계</span>
+                          <span className="text-base font-black text-indigo-600 money-text text-right">{formatMoney(cashFixedTotal)}</span>
                       </div>
                     </div>
                 </div>
@@ -591,20 +583,20 @@
             </div>
 
             <div className="fixed bottom-[110px] left-0 right-0 max-w-md mx-auto px-6 pointer-events-none z-50">
-              <div className="bg-slate-900/95 backdrop-blur-lg p-6 rounded-[36px] shadow-2xl border border-white/10 pointer-events-auto">
-                <div className="grid grid-cols-2 gap-8 border-b border-white/5 pb-6 mb-6">
-                  <div className="overflow-hidden">
-                    <div className="text-[13px] text-slate-500 font-black uppercase mb-2 tracking-tighter">전체 지출계획</div>
-                    <div className="text-white font-black text-base money-text">{formatMoney(grandPlanned)}</div>
+              <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[36px] shadow-2xl border border-white/10 pointer-events-auto">
+                <div className="grid grid-cols-2 gap-6 border-b border-white/5 pb-4 mb-4">
+                  <div className="min-w-0">
+                    <div className="text-[11px] text-slate-500 font-black uppercase mb-1 tracking-tighter">전체 지출계획</div>
+                    <div className="text-white font-black text-sm money-text">{formatMoney(grandPlanned)}</div>
                   </div>
-                  <div className="text-right overflow-hidden">
-                    <div className="text-[13px] text-slate-500 font-black uppercase mb-2 tracking-tighter">전체 실지출</div>
-                    <div className="text-white font-black text-base money-text">{formatMoney(grandActual)}</div>
+                  <div className="text-right min-w-0">
+                    <div className="text-[11px] text-slate-500 font-black uppercase mb-1 tracking-tighter">전체 실지출</div>
+                    <div className="text-white font-black text-sm money-text">{formatMoney(grandActual)}</div>
                   </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-indigo-300 font-black uppercase tracking-widest">잔여 예산</div>
-                  <div className={`text-xl font-black money-text ${balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <div className="flex justify-between items-center gap-4">
+                  <div className="text-[12px] text-indigo-300 font-black uppercase tracking-widest whitespace-nowrap">잔여 예산</div>
+                  <div className={`text-lg font-black money-text text-right ${balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {balance >= 0 ? '+' : ''}{formatMoney(balance)}
                   </div>
                 </div>
@@ -646,31 +638,31 @@
                 return (
                     <React.Fragment key={tx.id}>
                         {showHeader && (
-                            <div className="flex items-center gap-5 pt-10 pb-4 px-3">
-                                <span className="text-base font-black text-slate-400 uppercase tracking-widest">{dateLabel}</span>
+                            <div className="flex items-center gap-4 pt-8 pb-4 px-3">
+                                <span className="text-sm font-black text-slate-400 uppercase tracking-widest flex-shrink-0">{dateLabel}</span>
                                 <div className="h-[1.5px] flex-1 bg-gradient-to-r from-slate-200 to-transparent"></div>
                             </div>
                         )}
-                        <div className={`bg-white px-6 py-6 rounded-[36px] shadow-sm border border-slate-100 flex items-center gap-5 transition-all active:scale-[0.98] ${tx.isUnnecessary ? 'bg-red-50/40 border-red-100' : ''}`}>
+                        <div className={`bg-white px-5 py-5 rounded-[32px] shadow-sm border border-slate-100 flex items-center gap-4 transition-all active:scale-[0.98] ${tx.isUnnecessary ? 'bg-red-50/40 border-red-100' : ''}`}>
                             <div className={`custom-checkbox ${tx.isUnnecessary ? 'checked' : ''}`} onClick={() => onToggleUnnecessary(tx)}>
-                                {tx.isUnnecessary && <i className="fa-solid fa-check text-base"></i>}
+                                {tx.isUnnecessary && <i className="fa-solid fa-check text-sm"></i>}
                             </div>
                             
                             <div className="flex-1 min-w-0" onClick={() => onEdit(tx)}>
-                                <div className="flex items-center gap-4 mb-2">
-                                    <span className="text-sm font-black text-slate-400">{tx.date.slice(5)}</span>
-                                    <span className={`text-[13px] px-3 py-1.5 rounded-xl font-black uppercase tracking-tighter ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':tx.category==='생활비'?'bg-emerald-50 text-emerald-600':tx.category==='기타'?'bg-slate-50 text-slate-600':'bg-amber-50 text-amber-600'}`}>{tx.category}</span>
-                                    {tx.isInstallment && <span className="text-[13px] px-2.5 bg-purple-50 text-purple-500 rounded-lg font-black italic border border-purple-100">할부</span>}
+                                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                    <span className="text-[12px] font-black text-slate-400 flex-shrink-0">{tx.date.slice(5)}</span>
+                                    <span className={`text-[11px] px-2.5 py-1 rounded-xl font-black uppercase tracking-tighter whitespace-nowrap ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':tx.category==='생활비'?'bg-emerald-50 text-emerald-600':tx.category==='기타'?'bg-slate-50 text-slate-600':'bg-amber-50 text-amber-600'}`}>{tx.category}</span>
+                                    {tx.isInstallment && <span className="text-[11px] px-2 bg-purple-50 text-purple-500 rounded-lg font-black italic border border-purple-100 whitespace-nowrap">할부</span>}
                                 </div>
-                                <div className="font-bold text-slate-800 text-lg truncate">{tx.desc}</div>
-                                {tx.memo && <div className="text-[14px] text-slate-500 mt-3 line-clamp-2 italic px-3 py-1 bg-indigo-50/30 border-l-3 border-indigo-200">"{tx.memo}"</div>}
-                                <div className="text-sm text-indigo-400 font-bold mt-2 uppercase tracking-tighter">{tx.paymentMethod}</div>
+                                <div className="font-bold text-slate-800 text-base truncate">{tx.desc}</div>
+                                {tx.memo && <div className="text-[12px] text-slate-500 mt-2 line-clamp-1 italic px-2 py-1 bg-indigo-50/30 border-l-2 border-indigo-200 truncate">"{tx.memo}"</div>}
+                                <div className="text-[12px] text-indigo-400 font-bold mt-1 uppercase tracking-tighter truncate">{tx.paymentMethod}</div>
                             </div>
                             
-                            <div className="text-right flex flex-col items-end gap-3 min-w-[100px]">
+                            <div className="text-right flex flex-col items-end gap-2 min-w-[110px] flex-shrink-0">
                                 <div className="font-black text-slate-900 text-lg money-text">-{formatMoney(tx.amount)}</div>
-                                <button type="button" onClick={() => onDelete(tx.id)} className="w-12 h-12 rounded-full text-slate-200 hover:text-red-400 flex items-center justify-center transition-colors active:scale-90">
-                                    <i className="fa-solid fa-trash-can text-lg"></i>
+                                <button type="button" onClick={() => onDelete(tx.id)} className="w-10 h-10 rounded-full text-slate-200 hover:text-red-400 flex items-center justify-center transition-colors active:scale-90">
+                                    <i className="fa-solid fa-trash-can text-base"></i>
                                 </button>
                             </div>
                         </div>
@@ -683,39 +675,39 @@
           <div className="animate-fade-in pb-[280px] flex flex-col">
              <div className="sticky top-[140px] bg-[#f3f4f6] pt-5 pb-5 z-30 space-y-4 px-1 border-b border-slate-200 shadow-sm">
                 <div className="flex bg-slate-200/50 p-2 rounded-2xl shadow-inner">
-                   <button onClick={() => setViewMode('daily')} className={`flex-1 py-4 text-base font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 내역</button>
-                   <button onClick={() => setViewMode('monthly')} className={`flex-1 py-4 text-base font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별 전체</button>
+                   <button onClick={() => setViewMode('daily')} className={`flex-1 py-3.5 text-sm font-black rounded-xl transition-all ${viewMode === 'daily' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>일별 내역</button>
+                   <button onClick={() => setViewMode('monthly')} className={`flex-1 py-3.5 text-sm font-black rounded-xl transition-all ${viewMode === 'monthly' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500'}`}>월별 전체</button>
                 </div>
                 
                 <div className="px-1 flex flex-col gap-3">
                   {viewMode === 'daily' && (
                     <div className="flex flex-col gap-1">
-                      <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">조회 날짜 선택</label>
+                      <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">조회 날짜 선택</label>
                       <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="ledger-date-selector" />
                     </div>
                   )}
                   <div className="relative">
-                    <i className="fa-solid fa-magnifying-glass absolute left-6 top-5 text-slate-400 text-xl" style={{top: '22px'}}></i>
-                    <input type="text" placeholder="내역, 카테고리, 메모 검색..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                      className="w-full pl-14 pr-6 py-5 rounded-[24px] border-none shadow-sm bg-white focus:ring-2 focus:ring-purple-200 outline-none font-medium text-lg" />
+                    <i className="fa-solid fa-magnifying-glass absolute left-5 top-5 text-slate-400 text-lg" style={{top: '19px'}}></i>
+                    <input type="text" placeholder="검색어 입력..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                      className="w-full pl-12 pr-6 py-4 rounded-2xl border-none shadow-sm bg-white focus:ring-2 focus:ring-purple-200 outline-none font-medium text-base" />
                   </div>
                 </div>
              </div>
 
-             <div className="flex flex-col gap-6 pt-5">
+             <div className="flex flex-col gap-5 pt-5">
                 {renderTransactions()}
              </div>
 
              <div className="fixed bottom-[110px] left-0 right-0 max-w-md mx-auto px-6 pointer-events-none z-50">
-                <div className="bg-slate-900/95 backdrop-blur-lg p-6 rounded-[36px] shadow-2xl flex justify-between gap-8 pointer-events-auto border border-white/10 overflow-hidden">
-                    <div className="flex-1 overflow-hidden">
-                        <div className="text-sm text-slate-500 font-black mb-2 uppercase tracking-widest">변동지출 합계</div>
-                        <div className="text-2xl font-black text-white money-text">{formatMoney(total)}</div>
+                <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[36px] shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
+                    <div className="flex-1 min-w-0">
+                        <div className="text-[11px] text-slate-500 font-black mb-1 uppercase tracking-widest whitespace-nowrap">변동지출 합계</div>
+                        <div className="text-xl font-black text-white money-text">{formatMoney(total)}</div>
                     </div>
-                    <div className="w-px bg-white/10"></div>
-                    <div className="flex-1 text-right overflow-hidden">
-                        <div className="text-sm text-red-400 font-black mb-2 uppercase tracking-widest">불필요한 지출 ⚠️</div>
-                        <div className="text-2xl font-black text-red-400 money-text">{formatMoney(unnecessaryTotal)}</div>
+                    <div className="w-px bg-white/10 shrink-0"></div>
+                    <div className="flex-1 text-right min-w-0">
+                        <div className="text-[11px] text-red-400 font-black mb-1 uppercase tracking-widest whitespace-nowrap">불필요한 지출 ⚠️</div>
+                        <div className="text-xl font-black text-red-400 money-text">{formatMoney(unnecessaryTotal)}</div>
                     </div>
                 </div>
              </div>
@@ -725,7 +717,7 @@
 
       const FilterView = ({ allTransactions, monthSheet, currentMonth }) => {
         const [filterType, setFilterType] = useState('method'); // method, category, fixed_card, fixed_cash
-        const [filterValue, setFilterValue] = useState(PAYMENT_METHODS[0]);
+        const [filterValue, setFilterValue] = useState('카드전체');
 
         const monthTransactions = allTransactions.filter(t => t.date.startsWith(currentMonth));
         
@@ -734,14 +726,10 @@
           
           if (filterType === 'method') {
             const isCardTotal = filterValue === '카드전체';
-            
-            // Variable expenses
             const varList = monthTransactions.filter(t => {
                 if (isCardTotal) return t.paymentMethod !== '현금';
                 return t.paymentMethod === filterValue;
             }).map(t => ({...t, type: 'variable'}));
-            
-            // Fixed expenses
             const fixList = Object.entries(monthSheet.fixedExpenses)
               .filter(([_, v]) => {
                 if (isCardTotal) return v.method !== '현금' && v.actual > 0;
@@ -758,10 +746,7 @@
               }));
             list = [...varList, ...fixList];
           } else if (filterType === 'category') {
-            // Variable expenses matching category
             const varList = monthTransactions.filter(t => t.category === filterValue).map(t => ({...t, type: 'variable'}));
-            
-            // Fixed expenses matching label
             const fixList = Object.entries(monthSheet.fixedExpenses)
               .filter(([k, v]) => FIXED_LABELS[k] === filterValue && v.actual > 0)
               .map(([k, v]) => ({
@@ -810,7 +795,7 @@
             <div className="sticky top-[140px] bg-[#f3f4f6] pt-5 pb-5 z-30 space-y-4 px-1 border-b border-slate-200 shadow-sm">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">필터 기준</label>
+                  <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">필터 기준</label>
                   <select 
                     value={filterType} 
                     onChange={(e) => {
@@ -829,7 +814,7 @@
                 
                 {(filterType === 'method' || filterType === 'category') && (
                   <div className="flex flex-col gap-1 animate-fade-in">
-                    <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">세부 항목 선택</label>
+                    <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">세부 항목 선택</label>
                     <select 
                       value={filterValue} 
                       onChange={(e) => setFilterValue(e.target.value)}
@@ -863,11 +848,11 @@
             </div>
 
             <div className="flex flex-col gap-5 pt-6">
-              <div className="px-2 mb-2 flex justify-between items-end">
-                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest">검색 결과: {filteredList.length}건</h4>
-                <div className="text-right">
-                  <div className="text-[11px] text-slate-400 font-black uppercase mb-1">필터 합계 ({filterValue})</div>
-                  <div className="text-xl font-black text-indigo-600 money-text">{formatMoney(totalFiltered)}</div>
+              <div className="px-2 mb-2 flex justify-between items-end gap-4">
+                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex-shrink-0">결과: {filteredList.length}건</h4>
+                <div className="text-right min-w-0">
+                  <div className="text-[10px] text-slate-400 font-black uppercase mb-1 truncate leading-none">합계 ({filterValue})</div>
+                  <div className="text-lg font-black text-indigo-600 money-text leading-none">{formatMoney(totalFiltered)}</div>
                 </div>
               </div>
               
@@ -875,20 +860,20 @@
                 <div className="text-center py-40 text-slate-400"><i className="fa-solid fa-magnifying-glass text-6xl mb-6 block opacity-20"></i>조건에 맞는 내역이 없습니다.</div>
               ) : (
                 filteredList.map(item => (
-                  <div key={item.id} className={`bg-white px-6 py-6 rounded-[36px] shadow-sm border border-slate-100 flex items-center gap-5 ${item.type === 'fixed' ? 'border-l-4 border-l-purple-400' : ''}`}>
+                  <div key={item.id} className={`bg-white px-5 py-5 rounded-[32px] shadow-sm border border-slate-100 flex items-center gap-4 ${item.type === 'fixed' ? 'border-l-4 border-l-purple-400' : ''}`}>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-4 mb-2">
-                        <span className="text-sm font-black text-slate-400">{item.date.slice(5)}</span>
-                        <span className={`text-[12px] px-3 py-1.5 rounded-xl font-black uppercase tracking-tighter ${item.type === 'fixed' ? 'bg-purple-50 text-purple-600' : 'bg-slate-50 text-slate-600'}`}>
+                      <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+                        <span className="text-[11px] font-black text-slate-400 flex-shrink-0">{item.date.slice(5)}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter whitespace-nowrap ${item.type === 'fixed' ? 'bg-purple-50 text-purple-600' : 'bg-slate-50 text-slate-600'}`}>
                           {item.category}
                         </span>
-                        {item.type === 'fixed' && <span className="text-[11px] font-black text-purple-400 italic">FIXED</span>}
+                        {item.type === 'fixed' && <span className="text-[10px] font-black text-purple-400 italic">FIXED</span>}
                       </div>
-                      <div className="font-bold text-slate-800 text-lg truncate">{item.desc}</div>
-                      <div className="text-sm text-indigo-400 font-bold mt-2 uppercase tracking-tighter">{item.paymentMethod}</div>
+                      <div className="font-bold text-slate-800 text-sm truncate">{item.desc}</div>
+                      <div className="text-[11px] text-indigo-400 font-bold mt-1 uppercase tracking-tighter truncate">{item.paymentMethod}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-black text-slate-900 text-lg money-text">-{formatMoney(item.amount)}</div>
+                    <div className="text-right flex-shrink-0 min-w-[100px]">
+                      <div className="font-black text-slate-900 text-base money-text">-{formatMoney(item.amount)}</div>
                     </div>
                   </div>
                 ))
@@ -899,18 +884,18 @@
       };
 
       const Settings = ({ onBackup, onRestore, onReset }) => (
-        <div className="animate-fade-in pb-40 flex flex-col gap-10 pt-10">
+        <div className="animate-fade-in pb-40 flex flex-col gap-8 pt-8">
            <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-              <h3 className="text-slate-800 font-black text-2xl mb-10 flex items-center gap-3 uppercase tracking-tighter"><i className="fa-solid fa-gears text-indigo-500"></i> 데이터 관리</h3>
-              <div className="grid grid-cols-1 gap-6">
-                 <button onClick={onBackup} className="w-full flex justify-between items-center p-6 bg-purple-50 text-purple-700 rounded-[28px] font-black text-lg active:scale-95 transition-transform shadow-sm"><span><i className="fa-solid fa-download mr-5 text-xl"></i> 데이터 백업</span><i className="fa-solid fa-chevron-right opacity-30 text-base"></i></button>
-                 <button onClick={onRestore} className="w-full flex justify-between items-center p-6 bg-slate-50 text-slate-700 rounded-[28px] font-black text-lg active:scale-95 transition-transform shadow-sm"><span><i className="fa-solid fa-upload mr-5 text-xl"></i> 데이터 복구</span><i className="fa-solid fa-chevron-right opacity-30 text-base"></i></button>
-                 <div className="pt-8 mt-6 border-t border-slate-100">
-                    <button onClick={onReset} className="w-full flex justify-between items-center p-6 bg-red-50 text-red-600 rounded-[28px] font-black text-lg active:scale-95 transition-transform shadow-sm"><span><i className="fa-solid fa-trash-can mr-5 text-xl"></i> 데이터 초기화</span><i className="fa-solid fa-triangle-exclamation opacity-30 text-base"></i></button>
+              <h3 className="text-slate-800 font-black text-xl mb-8 flex items-center gap-3 uppercase tracking-tighter"><i className="fa-solid fa-gears text-indigo-500"></i> 데이터 관리</h3>
+              <div className="grid grid-cols-1 gap-5">
+                 <button onClick={onBackup} className="w-full flex justify-between items-center p-5 bg-purple-50 text-purple-700 rounded-2xl font-black text-base active:scale-95 transition-transform shadow-sm"><span><i className="fa-solid fa-download mr-4"></i> 데이터 백업</span><i className="fa-solid fa-chevron-right opacity-30"></i></button>
+                 <button onClick={onRestore} className="w-full flex justify-between items-center p-5 bg-slate-50 text-slate-700 rounded-2xl font-black text-base active:scale-95 transition-transform shadow-sm"><span><i className="fa-solid fa-upload mr-4"></i> 데이터 복구</span><i className="fa-solid fa-chevron-right opacity-30"></i></button>
+                 <div className="pt-6 mt-2 border-t border-slate-100">
+                    <button onClick={onReset} className="w-full flex justify-between items-center p-5 bg-red-50 text-red-600 rounded-2xl font-black text-base active:scale-95 transition-transform shadow-sm"><span><i className="fa-solid fa-trash-can mr-4"></i> 데이터 초기화</span><i className="fa-solid fa-triangle-exclamation opacity-30"></i></button>
                  </div>
               </div>
            </div>
-           <div className="text-center text-sm text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v20_Final</div>
+           <div className="text-center text-xs text-slate-300 font-bold uppercase tracking-widest">Garong's Ledger v20_Final</div>
         </div>
       );
 
@@ -928,7 +913,6 @@
         const [editingTx, setEditingTx] = useState(null);
         const [installmentChecked, setInstallmentChecked] = useState(false);
         const [deleteTargetId, setDeleteTargetId] = useState(null);
-        const [toast, setToast] = useState({ visible: false, message: '' });
 
         const currentMonth = selectedDate.slice(0, 7);
 
@@ -1019,11 +1003,10 @@
         return (
           <div className="max-w-md mx-auto min-h-screen bg-[#f3f4f6] shadow-2xl relative font-sans flex flex-col">
              
-             {/* STABLE HEADER: h-[140px] TO PREVENT ICON CLIPPING */}
              <div className="sticky top-0 z-50 bg-[#f3f4f6] shadow-sm border-b border-slate-200 h-[140px] overflow-hidden flex flex-col">
-               <header className="px-6 py-4 flex justify-between items-center bg-[#f3f4f6]">
-                  <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 tracking-tighter" onClick={() => window.location.reload()}>Garong's Ledger</h1>
-                  <input type="month" value={currentMonth} onChange={handleHeaderMonthChange} className="header-date-input" />
+               <header className="px-6 py-4 flex justify-between items-center bg-[#f3f4f6] gap-4">
+                  <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-indigo-600 tracking-tighter flex-shrink-0" onClick={() => window.location.reload()}>Garong's Ledger</h1>
+                  <input type="month" value={currentMonth} onChange={handleHeaderMonthChange} className="header-date-input flex-shrink" />
                </header>
                
                <nav className="flex justify-around items-end pt-2 pb-3 border-t border-slate-100 bg-[#f3f4f6] flex-1">
@@ -1035,14 +1018,14 @@
                     {id: 'settings', label: '시스템', icon: 'fa-screwdriver-wrench'}
                   ].map(t => (
                       <button key={t.id} onClick={() => { setTab(t.id); window.scrollTo(0, 0); }} className={`flex flex-col items-center w-[20%] pb-1 transition-all ${tab === t.id ? 'text-purple-600' : 'text-slate-300'} active:scale-95`}>
-                          <i className={`fa-solid ${t.icon} text-xl mb-1 ${tab===t.id?'animate-bounce-sm':''}`}></i>
-                          <span className="text-[12px] font-black uppercase tracking-tighter leading-none whitespace-nowrap">{t.label}</span>
+                          <i className={`fa-solid ${t.icon} text-lg mb-1 ${tab===t.id?'animate-bounce-sm':''}`}></i>
+                          <span className="text-[10px] font-black uppercase tracking-tighter leading-none whitespace-nowrap">{t.label}</span>
                       </button>
                   ))}
                </nav>
              </div>
 
-             <main className="flex-1 px-6 pb-4 pt-0 relative flex flex-col">
+             <main className="flex-1 px-5 pb-4 pt-0 relative flex flex-col">
                 {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} />}
                 {tab === 'planner' && <Planner sheet={monthSheet} onSave={handleSaveMonthSheet} currentMonth={currentMonth} />}
                 {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} />}
@@ -1065,62 +1048,62 @@
                 />}
              </main>
 
-             {tab === 'ledger' && <button onClick={() => { setEditingTx(null); setInstallmentChecked(false); setIsAddModalOpen(true); }} className="fixed bottom-40 right-8 w-20 h-20 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full text-white shadow-2xl shadow-purple-200 flex items-center justify-center text-3xl hover:scale-110 active:scale-95 transition-all z-[60]"><i className="fa-solid fa-plus"></i></button>}
+             {tab === 'ledger' && <button onClick={() => { setEditingTx(null); setInstallmentChecked(false); setIsAddModalOpen(true); }} className="fixed bottom-40 right-6 w-16 h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full text-white shadow-2xl shadow-purple-200 flex items-center justify-center text-2xl hover:scale-110 active:scale-95 transition-all z-[60]"><i className="fa-solid fa-plus"></i></button>}
 
              {isAddModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-end sm:items-center justify-center animate-fade-in">
-                   <div className="bg-white w-full sm:w-[480px] rounded-t-[48px] sm:rounded-[40px] p-10 shadow-2xl relative max-h-[95vh] overflow-y-auto no-scrollbar">
-                      <div className="flex justify-between items-center mb-10">
-                         <h3 className="text-3xl font-black text-slate-800 tracking-tight">{editingTx ? '지출 수정' : '기록하기'}</h3>
-                         <button onClick={() => setIsAddModalOpen(false)} className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90 transition-transform"><i className="fa-solid fa-xmark text-2xl"></i></button>
+                   <div className="bg-white w-full sm:w-[480px] rounded-t-[40px] sm:rounded-[32px] p-8 shadow-2xl relative max-h-[95vh] overflow-y-auto no-scrollbar">
+                      <div className="flex justify-between items-center mb-8">
+                         <h3 className="text-2xl font-black text-slate-800 tracking-tight">{editingTx ? '지출 수정' : '기록하기'}</h3>
+                         <button onClick={() => setIsAddModalOpen(false)} className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 active:scale-90 transition-transform"><i className="fa-solid fa-xmark text-xl"></i></button>
                       </div>
-                      <form onSubmit={handleAddTransaction} className="space-y-8">
+                      <form onSubmit={handleAddTransaction} className="space-y-6">
                          <input type="hidden" name="txId" defaultValue={editingTx?.id} />
-                         <div className="space-y-3">
-                            <label className="text-[14px] font-black text-slate-400 ml-1 uppercase">지출 일자</label>
-                            <input type="date" name="date" defaultValue={editingTx?.date || selectedDate} required className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold text-slate-700 border border-slate-100 focus:border-purple-200 transition-colors text-lg" />
+                         <div className="space-y-2">
+                            <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">지출 일자</label>
+                            <input type="date" name="date" defaultValue={editingTx?.date || selectedDate} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700 border border-slate-100 focus:border-purple-200 transition-colors text-base" />
                          </div>
-                         <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                                <label className="text-[14px] font-black text-slate-400 ml-1 uppercase">카테고리</label>
-                                <select name="category" defaultValue={editingTx?.category || '식비'} className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold border border-slate-100 text-lg">
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">카테고리</label>
+                                <select name="category" defaultValue={editingTx?.category || '식비'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 text-base">
                                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
-                            <div className="space-y-3">
-                                <label className="text-[14px] font-black text-slate-400 ml-1 uppercase">결제 수단</label>
-                                <select name="paymentMethod" defaultValue={editingTx?.paymentMethod || '체크카드'} className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold border border-slate-100 text-lg">
+                            <div className="space-y-2">
+                                <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">결제 수단</label>
+                                <select name="paymentMethod" defaultValue={editingTx?.paymentMethod || '체크카드'} className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 text-base">
                                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
                             </div>
                          </div>
-                         <div className="space-y-3">
-                            <label className="text-[14px] font-black text-slate-400 ml-1 uppercase">내용</label>
-                            <input type="text" name="desc" placeholder="내용 입력" defaultValue={editingTx?.desc} required className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold border border-slate-100 focus:border-purple-200 text-lg" />
+                         <div className="space-y-2">
+                            <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">내용</label>
+                            <input type="text" name="desc" placeholder="내용 입력" defaultValue={editingTx?.desc} required className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 focus:border-purple-200 text-base" />
                          </div>
-                         <div className="space-y-3">
-                            <label className="text-[14px] font-black text-slate-400 ml-1 uppercase">메모 (선택)</label>
-                            <textarea name="memo" placeholder="상세 메모" defaultValue={editingTx?.memo} rows="2" className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-bold border border-slate-100 resize-none focus:border-purple-200 transition-colors text-lg"></textarea>
+                         <div className="space-y-2">
+                            <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">메모 (선택)</label>
+                            <textarea name="memo" placeholder="상세 메모" defaultValue={editingTx?.memo} rows="2" className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold border border-slate-100 resize-none focus:border-purple-200 transition-colors text-base"></textarea>
                          </div>
-                         <div className="space-y-3">
-                            <label className="text-[14px] font-black text-slate-400 ml-1 uppercase">금액 (원)</label>
+                         <div className="space-y-2">
+                            <label className="text-[12px] font-black text-slate-400 ml-1 uppercase">금액 (원)</label>
                             <input type="text" name="amount" placeholder="0" defaultValue={editingTx?.amount?.toLocaleString()} required 
                               onChange={(e) => { e.target.value = cleanMoney(e.target.value).toLocaleString(); }}
-                              className="w-full p-6 bg-slate-50 rounded-3xl outline-none font-black text-3xl text-purple-600 border border-slate-100 focus:border-purple-200 transition-colors" />
+                              className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-black text-2xl text-purple-600 border border-slate-100 focus:border-purple-200 transition-colors" />
                          </div>
-                         <div className="flex items-center gap-5 p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                            <label className="flex items-center gap-4 cursor-pointer flex-1">
-                                <input type="checkbox" name="isInstallment" checked={installmentChecked} onChange={(e) => setInstallmentChecked(e.target.checked)} className="w-8 h-8 text-purple-600 rounded-xl" />
-                                <span className="text-lg font-black text-slate-700">할부 결제</span>
+                         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <label className="flex items-center gap-3 cursor-pointer flex-1">
+                                <input type="checkbox" name="isInstallment" checked={installmentChecked} onChange={(e) => setInstallmentChecked(e.target.checked)} className="w-6 h-6 text-purple-600 rounded-lg" />
+                                <span className="text-base font-black text-slate-700">할부 결제</span>
                             </label>
                             {installmentChecked && (
-                                <div className="flex items-center gap-3">
-                                  <input type="number" name="installmentMonths" placeholder="1" defaultValue={editingTx?.installmentMonths} className="w-20 p-3 bg-white border-b-2 border-purple-200 outline-none text-center font-black text-xl" />
-                                  <span className="text-base font-bold text-slate-400">개월</span>
+                                <div className="flex items-center gap-2">
+                                  <input type="number" name="installmentMonths" placeholder="1" defaultValue={editingTx?.installmentMonths} className="w-16 p-2 bg-white border-b-2 border-purple-200 outline-none text-center font-black text-lg" />
+                                  <span className="text-sm font-bold text-slate-400">개월</span>
                                 </div>
                             )}
                          </div>
-                         <button type="submit" className="w-full py-7 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-[36px] font-black shadow-2xl shadow-purple-100 mt-6 active:scale-[0.98] transition-all text-xl tracking-tight">지출 내역 저장하기</button>
+                         <button type="submit" className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-[28px] font-black shadow-xl mt-4 active:scale-[0.98] transition-all text-lg tracking-tight">저장하기</button>
                       </form>
                    </div>
                 </div>
@@ -1128,77 +1111,69 @@
 
              {isBackupModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-10 animate-fade-in">
-                   <div className="bg-white w-full max-w-lg rounded-t-[48px] sm:rounded-[40px] p-12 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                      <div className="flex justify-between items-center mb-10">
-                        <h3 className="text-3xl font-black flex items-center gap-4 uppercase tracking-tighter"><i className="fa-solid fa-download text-indigo-500"></i> 데이터 백업</h3>
-                        <button onClick={() => setIsBackupModalOpen(false)} className="w-12 h-12 rounded-full bg-slate-50 text-slate-400"><i className="fa-solid fa-xmark text-2xl"></i></button>
+                   <div className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[32px] p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                      <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-2xl font-black flex items-center gap-3 uppercase tracking-tighter"><i className="fa-solid fa-download text-indigo-500"></i> 데이터 백업</h3>
+                        <button onClick={() => setIsBackupModalOpen(false)} className="w-10 h-10 rounded-full bg-slate-50 text-slate-400"><i className="fa-solid fa-xmark text-xl"></i></button>
                       </div>
-                      <p className="text-base text-slate-500 font-bold mb-8 leading-relaxed">* 아래 텍스트 상자를 길게 눌러 '모두 선택' 후 '복사'하여 보관하세요.</p>
+                      <p className="text-sm text-slate-500 font-bold mb-6 leading-relaxed">아래 데이터를 복사하여 안전한 곳에 보관하세요.</p>
                       <textarea 
-                        className="w-full h-80 border border-slate-100 rounded-[32px] p-8 text-[14px] bg-slate-50 outline-none resize-none font-mono text-slate-600 allow-select" 
+                        className="w-full h-80 border border-slate-100 rounded-[24px] p-6 text-[12px] bg-slate-50 outline-none resize-none font-mono text-slate-600 allow-select" 
                         readOnly 
                         value={backupText}
                         onClick={(e) => e.target.select()}
                       ></textarea>
-                      <button onClick={() => setIsBackupModalOpen(false)} className="w-full mt-10 py-6 bg-slate-900 text-white rounded-[32px] font-black active:scale-95 transition-all text-lg">닫기</button>
+                      <button onClick={() => setIsBackupModalOpen(false)} className="w-full mt-8 py-5 bg-slate-900 text-white rounded-[24px] font-black active:scale-95 transition-all text-base">닫기</button>
                    </div>
                 </div>
              )}
 
              {isRestoreModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-10 animate-fade-in">
-                   <div className="bg-white w-full max-w-lg rounded-t-[48px] sm:rounded-[40px] p-12 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                      <div className="flex justify-between items-center mb-10">
-                        <h3 className="text-3xl font-black flex items-center gap-4 uppercase tracking-tighter"><i className="fa-solid fa-cloud-arrow-up text-purple-500"></i> 데이터 복구</h3>
-                        <button onClick={() => setIsRestoreModalOpen(false)} className="w-12 h-12 rounded-full bg-slate-50 text-slate-400"><i className="fa-solid fa-xmark text-2xl"></i></button>
+                   <div className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[32px] p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                      <div className="flex justify-between items-center mb-8">
+                        <h3 className="text-2xl font-black flex items-center gap-3 uppercase tracking-tighter"><i className="fa-solid fa-cloud-arrow-up text-purple-500"></i> 데이터 복구</h3>
+                        <button onClick={() => setIsRestoreModalOpen(false)} className="w-10 h-10 rounded-full bg-slate-50 text-slate-400"><i className="fa-solid fa-xmark text-xl"></i></button>
                       </div>
-                      <p className="text-base text-slate-500 font-bold mb-8 leading-relaxed">* 아래 입력창을 길게 눌러 복사해둔 백업 데이터를 '붙여넣기' 하세요.</p>
+                      <p className="text-sm text-slate-500 font-bold mb-6 leading-relaxed">보관해둔 백업 데이터를 아래에 붙여넣으세요.</p>
                       <textarea 
-                        className="w-full h-80 border border-slate-100 rounded-[32px] p-8 text-[14px] bg-slate-50 outline-none resize-none font-mono text-slate-600 allow-select" 
-                        placeholder='여기에 JSON 데이터를 붙여넣으세요' 
+                        className="w-full h-80 border border-slate-100 rounded-[24px] p-6 text-[12px] bg-slate-50 outline-none resize-none font-mono text-slate-600 allow-select" 
+                        placeholder='JSON 데이터를 붙여넣으세요' 
                         value={restoreText} 
-                        onPaste={e => {
-                          e.preventDefault();
-                          const pasted = e.clipboardData.getData('text');
-                          setRestoreText(pasted);
-                        }}
                         onChange={e => setRestoreText(e.target.value)}
                       ></textarea>
-                      <div className="flex gap-5 mt-10">
-                         <button onClick={() => setIsRestoreModalOpen(false)} className="flex-1 py-6 bg-slate-100 rounded-[32px] font-black text-slate-500 active:scale-95 transition-all text-lg">취소</button>
+                      <div className="flex gap-4 mt-8">
+                         <button onClick={() => setIsRestoreModalOpen(false)} className="flex-1 py-5 bg-slate-100 rounded-[24px] font-black text-slate-500 active:scale-95 transition-all text-base">취소</button>
                          <button onClick={async () => { 
                              try { 
                                let rawInput = restoreText.trim();
-                               if (!rawInput) throw new Error("입력값이 비어있습니다.");
                                const startIdx = rawInput.indexOf('{');
                                const endIdx = rawInput.lastIndexOf('}');
-                               if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) throw new Error("올바른 JSON 형식이 아닙니다.");
                                const cleanJson = rawInput.substring(startIdx, endIdx + 1);
                                const jsonData = JSON.parse(cleanJson);
                                await dbOps.restoreData(jsonData); 
-                               alert("데이터가 성공적으로 복구되었습니다!"); 
+                               alert("복구되었습니다!"); 
                                window.location.reload(); 
                              } catch(e){
-                               console.error("Restore Failure:", e);
-                               alert("복구 실패: " + e.message);
+                               alert("복구 실패");
                              } 
-                          }} className="flex-1 py-6 bg-purple-600 text-white rounded-[32px] font-black active:scale-95 transition-all shadow-2xl text-lg">복구 실행</button>
+                          }} className="flex-1 py-5 bg-purple-600 text-white rounded-[24px] font-black active:scale-95 transition-all shadow-xl text-base">복구 실행</button>
                       </div>
                    </div>
                 </div>
              )}
 
              {deleteTargetId && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[130] flex items-center justify-center p-10 animate-fade-in">
-                    <div className="bg-white rounded-[48px] p-12 shadow-2xl w-full max-sm text-center">
-                        <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-10 text-red-500">
-                            <i className="fa-solid fa-trash-can text-4xl"></i>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[130] flex items-center justify-center p-8 animate-fade-in">
+                    <div className="bg-white rounded-[40px] p-10 shadow-2xl w-full max-sm text-center">
+                        <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 text-red-500">
+                            <i className="fa-solid fa-trash-can text-3xl"></i>
                         </div>
-                        <h3 className="text-3xl font-black text-slate-800 mb-4">삭제 확인</h3>
-                        <p className="text-lg text-slate-400 mb-12 font-medium px-4 leading-relaxed">이 지출 항목을 삭제하시겠습니까?<br/>삭제 후에는 복구가 불가능합니다.</p>
-                        <div className="flex gap-6">
-                            <button onClick={() => setDeleteTargetId(null)} className="flex-1 py-6 bg-slate-100 text-slate-600 rounded-[32px] font-black active:scale-95 transition-all text-lg">취소</button>
-                            <button onClick={confirmDelete} className="flex-1 py-6 bg-red-500 text-white rounded-[32px] font-black active:scale-95 transition-all shadow-2xl text-lg">삭제하기</button>
+                        <h3 className="text-2xl font-black text-slate-800 mb-2">삭제 확인</h3>
+                        <p className="text-base text-slate-400 mb-10 font-medium">이 항목을 정말 삭제할까요?</p>
+                        <div className="flex gap-4">
+                            <button onClick={() => setDeleteTargetId(null)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black active:scale-95 transition-all text-base">취소</button>
+                            <button onClick={confirmDelete} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-black active:scale-95 transition-all shadow-lg text-base">삭제</button>
                         </div>
                     </div>
                 </div>
