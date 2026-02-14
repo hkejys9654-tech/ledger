@@ -59,8 +59,8 @@
         background: #f1f5f9;
         border: 1px solid #e2e8f0;
         border-radius: 10px;
-        padding: 6px 12px;
-        font-size: 15px;
+        padding: 4px 8px;
+        font-size: 13px; /* Reduced from 15px */
         font-weight: 700;
         color: #4f46e5;
         text-align: center;
@@ -72,8 +72,8 @@
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 14px;
-        padding: 12px 16px;
-        font-size: 15px;
+        padding: 10px 14px;
+        font-size: 14px; /* Reduced from 15px */
         font-weight: 800;
         color: #4f46e5;
         outline: none;
@@ -85,7 +85,7 @@
       input[type="date"]::-webkit-calendar-picker-indicator {
         opacity: 0.6;
         cursor: pointer;
-        transform: scale(1.2);
+        transform: scale(1.1);
       }
 
       .allow-select {
@@ -98,7 +98,6 @@
         white-space: nowrap !important;
         display: inline-block;
         flex-shrink: 0;
-        /* Removed overflow-hidden and clip to prevent cutting off numbers */
       }
     </style>
   </head>
@@ -305,7 +304,6 @@
                <div className="absolute -top-4 -right-4 opacity-10"><i className="fa-solid fa-calendar-check text-9xl"></i></div>
                <div className="relative z-10">
                  <h2 className="text-indigo-200 text-sm font-bold uppercase tracking-wider">{currentMonth}월 총 잔액</h2>
-                 {/* font-size reduced slightly and width ensured to prevent truncation */}
                  <h1 className="text-2xl font-black mt-2 money-text leading-tight">{formatMoney(mBalance)}</h1>
                </div>
                <div className="mt-8 grid grid-cols-2 gap-4 relative z-10">
@@ -913,6 +911,7 @@
         const [editingTx, setEditingTx] = useState(null);
         const [installmentChecked, setInstallmentChecked] = useState(false);
         const [deleteTargetId, setDeleteTargetId] = useState(null);
+        const [isCopied, setIsCopied] = useState(false);
 
         const currentMonth = selectedDate.slice(0, 7);
 
@@ -996,6 +995,13 @@
         const handleHeaderMonthChange = (e) => {
             const newMonth = e.target.value;
             setSelectedDate(`${newMonth}-01`);
+        };
+
+        const handleCopyAll = () => {
+            navigator.clipboard.writeText(backupText).then(() => {
+                setIsCopied(true);
+                setTimeout(() => setIsCopied(false), 2000);
+            });
         };
 
         if (!monthSheet) return <div className="flex h-screen items-center justify-center text-purple-600 bg-[#f3f4f6]"><i className="fa-solid fa-circle-notch fa-spin text-7xl"></i></div>;
@@ -1111,19 +1117,37 @@
 
              {isBackupModalOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-end sm:items-center justify-center p-0 sm:p-10 animate-fade-in">
-                   <div className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[32px] p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                      <div className="flex justify-between items-center mb-8">
-                        <h3 className="text-2xl font-black flex items-center gap-3 uppercase tracking-tighter"><i className="fa-solid fa-download text-indigo-500"></i> 데이터 백업</h3>
+                   <div className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[32px] p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-black flex items-center gap-3 uppercase tracking-tighter"><i className="fa-solid fa-download text-indigo-500"></i> 데이터 백업</h3>
                         <button onClick={() => setIsBackupModalOpen(false)} className="w-10 h-10 rounded-full bg-slate-50 text-slate-400"><i className="fa-solid fa-xmark text-xl"></i></button>
                       </div>
-                      <p className="text-sm text-slate-500 font-bold mb-6 leading-relaxed">아래 데이터를 복사하여 안전한 곳에 보관하세요.</p>
-                      <textarea 
-                        className="w-full h-80 border border-slate-100 rounded-[24px] p-6 text-[12px] bg-slate-50 outline-none resize-none font-mono text-slate-600 allow-select" 
-                        readOnly 
-                        value={backupText}
-                        onClick={(e) => e.target.select()}
-                      ></textarea>
-                      <button onClick={() => setIsBackupModalOpen(false)} className="w-full mt-8 py-5 bg-slate-900 text-white rounded-[24px] font-black active:scale-95 transition-all text-base">닫기</button>
+                      <p className="text-sm text-slate-500 font-bold mb-4 leading-relaxed">전체 데이터를 복사하여 안전한 곳에 보관하세요.</p>
+                      
+                      <div className="relative mb-6">
+                        <textarea 
+                          className="w-full h-80 border border-slate-100 rounded-[24px] p-6 text-[12px] bg-slate-50 outline-none resize-none font-mono text-slate-600 allow-select" 
+                          readOnly 
+                          value={backupText}
+                          onClick={(e) => e.target.select()}
+                        ></textarea>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4">
+                        <button 
+                          onClick={handleCopyAll} 
+                          className={`w-full py-5 rounded-2xl font-black text-base shadow-lg transition-all flex items-center justify-center gap-3 ${isCopied ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white active:scale-95'}`}
+                        >
+                          <i className={`fa-solid ${isCopied ? 'fa-check' : 'fa-copy'}`}></i>
+                          {isCopied ? '복사 완료!' : '전체 데이터 복사'}
+                        </button>
+                        <button 
+                          onClick={() => setIsBackupModalOpen(false)} 
+                          className="w-full py-5 bg-slate-100 text-slate-600 rounded-2xl font-black active:scale-95 transition-all text-base"
+                        >
+                          닫기
+                        </button>
+                      </div>
                    </div>
                 </div>
              )}
