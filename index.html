@@ -47,8 +47,8 @@
         border: none;
         border-radius: 12px;
         padding: 10px 14px;
-        font-size: 15px;
-        font-weight: 800;
+        font-size: 13px;
+        font-weight: 700;
         color: #475569;
         outline: none;
         cursor: pointer;
@@ -73,8 +73,8 @@
         border: 1px solid #e2e8f0;
         border-radius: 14px;
         padding: 10px 14px;
-        font-size: 14px;
-        font-weight: 800;
+        font-size: 13px;
+        font-weight: 700;
         color: #4f46e5;
         outline: none;
         width: 100%;
@@ -98,9 +98,17 @@
         white-space: nowrap !important;
         display: inline-block;
         flex-shrink: 0;
+        font-size: 13px !important;
+        font-weight: 700 !important;
+      }
+      
+      input, select, textarea {
+        font-size: 13px !important;
+        font-weight: 700 !important;
       }
     </style>
-  </head>
+  <link rel="stylesheet" href="/index.css">
+</head>
   <body>
     <div id="root"></div>
 
@@ -303,16 +311,16 @@
             <div className="bg-gradient-to-br from-purple-800 to-indigo-700 rounded-[36px] p-6 text-white shadow-xl relative overflow-hidden">
                <div className="absolute -top-4 -right-4 opacity-10"><i className="fa-solid fa-calendar-check text-9xl"></i></div>
                <div className="relative z-10">
-                 <h2 className="text-indigo-200 text-sm font-bold uppercase tracking-wider">{currentMonth}월 총 잔액</h2>
+                 <h2 className="text-indigo-200 text-[13px] font-bold uppercase tracking-wider">{currentMonth}월 총 잔액</h2>
                  <h1 className="text-2xl font-black mt-2 money-text leading-tight">{formatMoney(mBalance)}</h1>
                </div>
                <div className="mt-8 grid grid-cols-2 gap-4 relative z-10">
                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 min-w-0">
-                   <div className="text-[12px] text-indigo-200 mb-1">월 수입</div>
+                   <div className="text-[13px] text-indigo-200 mb-1">월 수입</div>
                    <div className="font-bold text-lg money-text leading-none">{formatMoney(mIncome)}</div>
                  </div>
                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/10 min-w-0">
-                   <div className="text-[12px] text-indigo-200 mb-1">월 지출(합계)</div>
+                   <div className="text-[13px] text-indigo-200 mb-1">월 지출(합계)</div>
                    <div className="font-bold text-lg money-text leading-none">{formatMoney(mFixed + mActual)}</div>
                  </div>
                </div>
@@ -346,11 +354,11 @@
                   ))}
                </div>
                <div className="mt-8 pt-6 border-t border-dashed border-slate-200 flex justify-between items-center px-1 gap-2">
-                  <span className="text-slate-500 text-sm font-black uppercase tracking-tight whitespace-nowrap">변동지출 총계</span>
+                  <span className="text-slate-500 text-[13px] font-bold uppercase tracking-tight whitespace-nowrap">변동지출 총계</span>
                   <span className="text-slate-800 font-black text-lg money-text">{formatMoney(mActual)}</span>
                </div>
                <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center px-1 gap-2">
-                  <span className="text-red-500 text-sm font-black uppercase tracking-tight whitespace-nowrap">불필요한 지출 ⚠️</span>
+                  <span className="text-red-500 text-[13px] font-bold uppercase tracking-tight whitespace-nowrap">불필요한 지출 ⚠️</span>
                   <span className="text-red-600 font-black text-xl money-text">{formatMoney(mUnnecessary)}</span>
                </div>
             </div>
@@ -465,7 +473,7 @@
               <div className="flex justify-between items-center px-1 gap-2">
                  <div className="min-w-0">
                     <h2 className="text-xl font-black text-slate-800 tracking-tight leading-tight truncate">고정예산 관리</h2>
-                    <p className="text-[11px] text-indigo-500 font-black uppercase tracking-widest leading-none mt-1">{currentMonth} 시트</p>
+                    <p className="text-[13px] text-indigo-500 font-bold uppercase tracking-widest leading-none mt-1">{currentMonth} 시트</p>
                  </div>
                  <div className="flex gap-2 shrink-0">
                    {isEditing ? (
@@ -523,7 +531,7 @@
                 </div>
 
                 <div className="mt-8 p-5 bg-indigo-50/80 rounded-2xl flex justify-between items-center border border-indigo-100 gap-4">
-                    <span className="text-[12px] font-black text-indigo-600 whitespace-nowrap">수입 예산 총계</span>
+                    <span className="text-[13px] font-bold text-indigo-600 whitespace-nowrap">수입 예산 총계</span>
                     <span className="font-black text-indigo-700 text-base money-text text-right">{formatMoney(incomeSum)}</span>
                 </div>
               </div>
@@ -572,11 +580,11 @@
                     <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 mb-6">고정지출 실시간 통계</h4>
                     <div className="grid grid-cols-1 gap-4">
                       <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center gap-4">
-                          <span className="text-[12px] text-slate-500 font-black uppercase tracking-tighter whitespace-nowrap">💳 카드 합계</span>
+                          <span className="text-[13px] text-slate-500 font-bold uppercase tracking-tighter whitespace-nowrap">💳 카드 합계</span>
                           <span className="text-base font-black text-slate-800 money-text text-right">{formatMoney(cardFixedTotal)}</span>
                       </div>
                       <div className="p-5 bg-indigo-50/80 rounded-2xl border border-indigo-100 flex justify-between items-center gap-4">
-                          <span className="text-[12px] text-indigo-400 font-black uppercase tracking-tighter whitespace-nowrap">💸 현금 합계</span>
+                          <span className="text-[13px] text-indigo-400 font-bold uppercase tracking-tighter whitespace-nowrap">💸 현금 합계</span>
                           <span className="text-base font-black text-indigo-600 money-text text-right">{formatMoney(cashFixedTotal)}</span>
                       </div>
                     </div>
@@ -588,16 +596,16 @@
               <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[36px] shadow-2xl border border-white/10 pointer-events-auto">
                 <div className="grid grid-cols-2 gap-6 border-b border-white/5 pb-4 mb-4">
                   <div className="min-w-0">
-                    <div className="text-[11px] text-slate-500 font-black uppercase mb-1 tracking-tighter">전체 지출계획</div>
+                    <div className="text-[13px] text-slate-500 font-bold uppercase mb-1 tracking-tighter">전체 지출계획</div>
                     <div className="text-white font-black text-sm money-text">{formatMoney(grandPlanned)}</div>
                   </div>
                   <div className="text-right min-w-0">
-                    <div className="text-[11px] text-slate-500 font-black uppercase mb-1 tracking-tighter">전체 실지출</div>
+                    <div className="text-[13px] text-slate-500 font-bold uppercase mb-1 tracking-tighter">전체 실지출</div>
                     <div className="text-white font-black text-sm money-text">{formatMoney(grandActual)}</div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center gap-4">
-                  <div className="text-[12px] text-indigo-300 font-black uppercase tracking-widest whitespace-nowrap">잔여 예산</div>
+                  <div className="text-[13px] text-indigo-300 font-bold uppercase tracking-widest whitespace-nowrap">잔여 예산</div>
                   <div className={`text-lg font-black money-text text-right ${balance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {balance >= 0 ? '+' : ''}{formatMoney(balance)}
                   </div>
@@ -641,7 +649,7 @@
                     <React.Fragment key={tx.id}>
                         {showHeader && (
                             <div className="flex items-center gap-4 pt-8 pb-4 px-3">
-                                <span className="text-sm font-black text-slate-400 uppercase tracking-widest flex-shrink-0">{dateLabel}</span>
+                                <span className="text-[13px] font-bold text-slate-400 uppercase tracking-widest flex-shrink-0">{dateLabel}</span>
                                 <div className="h-[1.5px] flex-1 bg-gradient-to-r from-slate-200 to-transparent"></div>
                             </div>
                         )}
@@ -652,7 +660,7 @@
                             
                             <div className="flex-1 min-w-0" onClick={() => onEdit(tx)}>
                                 <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-                                    <span className="text-[11px] font-black text-slate-400 flex-shrink-0">{tx.date.slice(5)}</span>
+                                    <span className="text-[13px] font-bold text-slate-400 flex-shrink-0">{tx.date.slice(5)}</span>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter whitespace-nowrap ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':tx.category==='생활비'?'bg-emerald-50 text-emerald-600':tx.category==='기타'?'bg-slate-50 text-slate-600':'bg-amber-50 text-amber-600'}`}>{tx.category}</span>
                                     {tx.isInstallment && <span className="text-[10px] px-2 bg-purple-50 text-purple-500 rounded-lg font-black italic border border-purple-100 whitespace-nowrap">할부</span>}
                                 </div>
@@ -703,12 +711,12 @@
              <div className="fixed bottom-[110px] left-0 right-0 max-w-md mx-auto px-6 pointer-events-none z-50">
                 <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[36px] shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
                     <div className="flex-1 min-w-0">
-                        <div className="text-[11px] text-slate-500 font-black mb-1 uppercase tracking-widest whitespace-nowrap">변동지출 합계</div>
+                        <div className="text-[13px] text-slate-500 font-bold mb-1 uppercase tracking-widest whitespace-nowrap">변동지출 합계</div>
                         <div className="text-xl font-black text-white money-text">{formatMoney(total)}</div>
                     </div>
                     <div className="w-px bg-white/10 shrink-0"></div>
                     <div className="flex-1 text-right min-w-0">
-                        <div className="text-[11px] text-red-400 font-black mb-1 uppercase tracking-widest whitespace-nowrap">불필요한 지출 ⚠️</div>
+                        <div className="text-[13px] text-red-400 font-bold mb-1 uppercase tracking-widest whitespace-nowrap">불필요한 지출 ⚠️</div>
                         <div className="text-xl font-black text-red-400 money-text">{formatMoney(unnecessaryTotal)}</div>
                     </div>
                 </div>
@@ -1221,5 +1229,6 @@
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(<App />);
     </script>
-  </body>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
