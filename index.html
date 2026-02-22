@@ -382,13 +382,20 @@
         const grandActual = Object.values(tempSheet.fixedExpenses).reduce((acc, v) => acc + (v.actual || 0), 0);
         const balance = grandPlanned - grandActual;
 
-        const fixedByMethod = PAYMENT_METHODS.reduce((acc, m) => {
-          acc[m] = Object.values(tempSheet.fixedExpenses).filter(v => v.method === m).reduce((sum, v) => sum + (v.actual || 0), 0);
+        const fixedStats = PAYMENT_METHODS.reduce((acc, m) => {
+          const items = Object.values(tempSheet.fixedExpenses).filter(v => v.method === m);
+          acc[m] = {
+            planned: items.reduce((sum, v) => sum + (v.planned || 0), 0),
+            actual: items.reduce((sum, v) => sum + (v.actual || 0), 0)
+          };
           return acc;
         }, {});
 
-        const cardFixedTotal = (fixedByMethod['롯데카드'] || 0) + (fixedByMethod['현대카드'] || 0) + (fixedByMethod['신한카드'] || 0) + (fixedByMethod['체크카드'] || 0);
-        const cashFixedTotal = fixedByMethod['현금'] || 0;
+        const cardMethods = ['롯데카드', '현대카드', '신한카드', '체크카드'];
+        const cardPlannedTotal = cardMethods.reduce((sum, m) => sum + (fixedStats[m]?.planned || 0), 0);
+        const cardActualTotal = cardMethods.reduce((sum, m) => sum + (fixedStats[m]?.actual || 0), 0);
+        const cashPlannedTotal = fixedStats['현금']?.planned || 0;
+        const cashActualTotal = fixedStats['현금']?.actual || 0;
 
         const handleIncomeChange = (key, field, value) => {
           setTempSheet(prev => {
@@ -431,6 +438,23 @@
             ...prev,
             incomes: { ...prev.incomes, additional: prev.incomes.additional.filter(i => i.id !== id) }
           }));
+        };
+
+        const loadPrevMonthData = async (type) => {
+          const prevMonth = addMonths(currentMonth + "-01", -1).slice(0, 7);
+          const prevSheet = await dbOps.getMonthSheet(prevMonth);
+          
+          setTempSheet(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            Object.keys(FIXED_LABELS).forEach(key => {
+              if (prevSheet && prevSheet.fixedExpenses && prevSheet.fixedExpenses[key]) {
+                next.fixedExpenses[key][type] = prevSheet.fixedExpenses[key][type];
+                next.fixedExpenses[key].day = prevSheet.fixedExpenses[key].day;
+                next.fixedExpenses[key].method = prevSheet.fixedExpenses[key].method;
+              }
+            });
+            return next;
+          });
         };
 
         const renderFixedRow = (k, label) => (
@@ -539,6 +563,13 @@
               <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
                 <h3 className="text-purple-600 font-black text-lg mb-6 flex items-center gap-2 uppercase tracking-tighter border-b border-purple-50 pb-3"><i className="fa-solid fa-receipt"></i> 고정 지출 내역</h3>
                 
+                {isEditing && (
+                  <div className="flex gap-2 mb-6 animate-fade-in">
+                    <button onClick={() => loadPrevMonthData('planned')} className="flex-1 py-2 bg-purple-50 text-purple-600 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all border border-purple-100">이전 달 계획 가져오기</button>
+                    <button onClick={() => loadPrevMonthData('actual')} className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all border border-indigo-100">이전 달 실제 지출 가져오기</button>
+                  </div>
+                )}
+                
                 <div className="space-y-1">
                     {renderFixedRow('loanInterest', '🏦 대출이자')}
                     {renderFixedRow('maintenance', '🏢 관리비')}
@@ -579,13 +610,31 @@
                 <div className="mt-12 pt-10 border-t border-slate-100">
                     <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 mb-6">고정지출 실시간 통계</h4>
                     <div className="grid grid-cols-1 gap-4">
-                      <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex justify-between items-center gap-4">
-                          <span className="text-[13px] text-slate-500 font-bold uppercase tracking-tighter whitespace-nowrap">💳 카드 합계</span>
-                          <span className="text-base font-black text-slate-800 money-text text-right">{formatMoney(cardFixedTotal)}</span>
+                      <div className="p-5 bg-slate-50 rounded-[32px] border border-slate-100 shadow-sm">
+                          <div className="text-[13px] text-slate-500 font-bold uppercase tracking-tighter mb-4 px-1">💳 카드 합계</div>
+                          <div className="grid grid-cols-2 gap-6 border-t border-slate-200/50 pt-4">
+                            <div className="min-w-0">
+                              <div className="text-[11px] text-slate-400 font-bold uppercase mb-1 tracking-tighter">계획 합계</div>
+                              <div className="text-slate-600 font-black text-[13px] money-text">{formatMoney(cardPlannedTotal)}</div>
+                            </div>
+                            <div className="text-right min-w-0">
+                              <div className="text-[11px] text-slate-400 font-bold uppercase mb-1 tracking-tighter">실제 합계</div>
+                              <div className="text-slate-800 font-black text-[13px] money-text">{formatMoney(cardActualTotal)}</div>
+                            </div>
+                          </div>
                       </div>
-                      <div className="p-5 bg-indigo-50/80 rounded-2xl border border-indigo-100 flex justify-between items-center gap-4">
-                          <span className="text-[13px] text-indigo-400 font-bold uppercase tracking-tighter whitespace-nowrap">💸 현금 합계</span>
-                          <span className="text-base font-black text-indigo-600 money-text text-right">{formatMoney(cashFixedTotal)}</span>
+                      <div className="p-5 bg-indigo-50/80 rounded-[32px] border border-indigo-100 shadow-sm">
+                          <div className="text-[13px] text-indigo-400 font-bold uppercase tracking-tighter mb-4 px-1">💸 현금 합계</div>
+                          <div className="grid grid-cols-2 gap-6 border-t border-indigo-200/50 pt-4">
+                            <div className="min-w-0">
+                              <div className="text-[11px] text-indigo-300 font-bold uppercase mb-1 tracking-tighter">계획 합계</div>
+                              <div className="text-indigo-500 font-black text-[13px] money-text">{formatMoney(cashPlannedTotal)}</div>
+                            </div>
+                            <div className="text-right min-w-0">
+                              <div className="text-[11px] text-indigo-300 font-bold uppercase mb-1 tracking-tighter">실제 합계</div>
+                              <div className="text-indigo-600 font-black text-[13px] money-text">{formatMoney(cashActualTotal)}</div>
+                            </div>
+                          </div>
                       </div>
                     </div>
                 </div>
@@ -774,8 +823,12 @@
               }));
             list = [...varList, ...fixList];
           } else if (filterType === 'fixed_card') {
+            const isCardTotal = filterValue === '카드전체' || filterValue === '';
             list = Object.entries(monthSheet.fixedExpenses)
-              .filter(([_, v]) => v.method !== '현금' && v.actual > 0)
+              .filter(([_, v]) => {
+                if (isCardTotal) return v.method !== '현금' && v.actual > 0;
+                return v.method === filterValue && v.actual > 0;
+              })
               .map(([k, v]) => ({
                 id: `fixed_${k}`,
                 date: `${currentMonth}-${String(v.day).padStart(2, '0')}`,
@@ -816,7 +869,7 @@
                     value={filterType} 
                     onChange={(e) => {
                       setFilterType(e.target.value);
-                      if (e.target.value === 'method') setFilterValue('카드전체');
+                      if (e.target.value === 'method' || e.target.value === 'fixed_card') setFilterValue('카드전체');
                       else if (e.target.value === 'category') setFilterValue(CATEGORIES[0]);
                       else setFilterValue('');
                     }}
@@ -830,7 +883,7 @@
                   </select>
                 </div>
                 
-                {(filterType === 'method' || filterType === 'category') && (
+                {(filterType === 'method' || filterType === 'category' || filterType === 'fixed_card') && (
                   <div className="flex flex-col gap-1 animate-fade-in">
                     <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">세부 항목 선택</label>
                     <select 
@@ -838,10 +891,10 @@
                       onChange={(e) => setFilterValue(e.target.value)}
                       className="filter-selector"
                     >
-                      {filterType === 'method' ? (
+                      {filterType === 'method' || filterType === 'fixed_card' ? (
                           <>
                             <option value="카드전체">💳 카드전체 (현금제외)</option>
-                            {PAYMENT_METHODS.map(val => (
+                            {PAYMENT_METHODS.filter(m => m !== '현금').map(val => (
                                 <option key={val} value={val}>{val}</option>
                             ))}
                           </>
