@@ -774,88 +774,92 @@
         );
       };
 
-      const FilterView = ({ allTransactions, monthSheet, currentMonth }) => {
+      const FilterView = ({ allTransactions, allSheets, currentMonth }) => {
         const [filterType, setFilterType] = useState('method'); // method, category, fixed_card, fixed_cash, unnecessary
         const [filterValue, setFilterValue] = useState('카드전체');
+        const [periodType, setPeriodType] = useState('monthly'); // monthly, 1m, 3m, custom
+        const [startDate, setStartDate] = useState('');
+        const [endDate, setEndDate] = useState('');
 
-        const monthTransactions = allTransactions.filter(t => t.date.startsWith(currentMonth));
-        
-        const filteredList = useMemo(() => {
-          let list = [];
+        // Initialize dates
+        useEffect(() => {
+          const today = new Date();
+          const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
           
+          if (periodType === 'monthly') {
+            const [y, m] = currentMonth.split('-').map(Number);
+            const lastDayDate = new Date(y, m, 0);
+            const lastDayStr = `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+            setStartDate(`${currentMonth}-01`);
+            setEndDate(lastDayStr);
+          } else if (periodType === '1m') {
+            const start = addMonths(todayStr, -1);
+            setStartDate(start);
+            setEndDate(todayStr);
+          } else if (periodType === '3m') {
+            const start = addMonths(todayStr, -3);
+            setStartDate(start);
+            setEndDate(todayStr);
+          }
+        }, [periodType, currentMonth]);
+
+        const filteredList = useMemo(() => {
+          if (!startDate || !endDate) return [];
+
+          // 1. Variable Transactions in range
+          const varList = allTransactions.filter(t => t.date >= startDate && t.date <= endDate).map(t => ({...t, type: 'variable'}));
+          
+          // 2. Fixed Expenses in range
+          const fixList = [];
+          allSheets.forEach(sheet => {
+            Object.entries(sheet.fixedExpenses).forEach(([k, v]) => {
+              if (v.actual > 0) {
+                const date = `${sheet.month}-${String(v.day).padStart(2, '0')}`;
+                if (date >= startDate && date <= endDate) {
+                  fixList.push({
+                    id: `fixed_${sheet.month}_${k}`,
+                    date,
+                    desc: FIXED_LABELS[k] || k,
+                    category: '고정지출',
+                    amount: v.actual,
+                    paymentMethod: v.method,
+                    type: 'fixed'
+                  });
+                }
+              }
+            });
+          });
+
+          const combined = [...varList, ...fixList];
+          let list = [];
+
           if (filterType === 'method') {
             const isCardTotal = filterValue === '카드전체';
             const isCash = filterValue === '현금';
-            
-            const varList = monthTransactions.filter(t => {
-                if (isCardTotal) return t.paymentMethod !== '현금';
-                return t.paymentMethod === filterValue;
-            }).map(t => ({...t, type: 'variable'}));
-            
-            // CASH: exclude fixed cash expenses per request #1
-            const fixList = isCash ? [] : Object.entries(monthSheet.fixedExpenses)
-              .filter(([_, v]) => {
-                if (isCardTotal) return v.method !== '현금' && v.actual > 0;
-                return v.method === filterValue && v.actual > 0;
-              })
-              .map(([k, v]) => ({
-                id: `fixed_${k}`,
-                date: `${currentMonth}-${String(v.day).padStart(2, '0')}`,
-                desc: FIXED_LABELS[k] || k,
-                category: '고정지출',
-                amount: v.actual,
-                paymentMethod: v.method,
-                type: 'fixed'
-              }));
-            list = [...varList, ...fixList];
+            list = combined.filter(item => {
+              if (isCardTotal) return item.paymentMethod !== '현금';
+              return item.paymentMethod === filterValue;
+            });
           } else if (filterType === 'category') {
-            const varList = monthTransactions.filter(t => t.category === filterValue).map(t => ({...t, type: 'variable'}));
-            const fixList = Object.entries(monthSheet.fixedExpenses)
-              .filter(([k, v]) => FIXED_LABELS[k] === filterValue && v.actual > 0)
-              .map(([k, v]) => ({
-                id: `fixed_${k}`,
-                date: `${currentMonth}-${String(v.day).padStart(2, '0')}`,
-                desc: FIXED_LABELS[k] || k,
-                category: '고정지출',
-                amount: v.actual,
-                paymentMethod: v.method,
-                type: 'fixed'
-              }));
-            list = [...varList, ...fixList];
+            list = combined.filter(item => {
+              if (item.type === 'variable') return item.category === filterValue;
+              return item.desc === filterValue;
+            });
           } else if (filterType === 'fixed_card') {
             const isCardTotal = filterValue === '카드전체' || filterValue === '';
-            list = Object.entries(monthSheet.fixedExpenses)
-              .filter(([_, v]) => {
-                if (isCardTotal) return v.method !== '현금' && v.actual > 0;
-                return v.method === filterValue && v.actual > 0;
-              })
-              .map(([k, v]) => ({
-                id: `fixed_${k}`,
-                date: `${currentMonth}-${String(v.day).padStart(2, '0')}`,
-                desc: FIXED_LABELS[k] || k,
-                category: '고정지출',
-                amount: v.actual,
-                paymentMethod: v.method,
-                type: 'fixed'
-              }));
+            list = combined.filter(item => {
+              if (item.type !== 'fixed') return false;
+              if (isCardTotal) return item.paymentMethod !== '현금';
+              return item.paymentMethod === filterValue;
+            });
           } else if (filterType === 'fixed_cash') {
-            list = Object.entries(monthSheet.fixedExpenses)
-              .filter(([_, v]) => v.method === '현금' && v.actual > 0)
-              .map(([k, v]) => ({
-                id: `fixed_${k}`,
-                date: `${currentMonth}-${String(v.day).padStart(2, '0')}`,
-                desc: FIXED_LABELS[k] || k,
-                category: '고정지출',
-                amount: v.actual,
-                paymentMethod: v.method,
-                type: 'fixed'
-              }));
+            list = combined.filter(item => item.type === 'fixed' && item.paymentMethod === '현금');
           } else if (filterType === 'unnecessary') {
-            list = monthTransactions.filter(t => t.isUnnecessary).map(t => ({...t, type: 'variable'}));
+            list = combined.filter(item => item.type === 'variable' && item.isUnnecessary);
           }
           
           return list.sort((a, b) => new Date(b.date) - new Date(a.date));
-        }, [filterType, filterValue, monthTransactions, monthSheet, currentMonth]);
+        }, [filterType, filterValue, startDate, endDate, allTransactions, allSheets]);
 
         const totalFiltered = filteredList.reduce((acc, item) => acc + item.amount, 0);
 
@@ -863,6 +867,42 @@
           <div className="animate-fade-in pb-48 flex flex-col">
             <div className="sticky top-[140px] bg-[#f3f4f6] pt-5 pb-5 z-30 space-y-4 px-1 border-b border-slate-200 shadow-sm">
               <div className="flex flex-col gap-4">
+                {/* Period Selection */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">이용 기간 (최근 3개월까지 조회 가능)</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['monthly', '1m', '3m', 'custom'].map(type => (
+                      <button 
+                        key={type}
+                        onClick={() => setPeriodType(type)}
+                        className={`py-3 rounded-xl text-[13px] font-bold transition-all border ${periodType === type ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-500 border-slate-200'}`}
+                      >
+                        {type === 'monthly' ? '월별' : type === '1m' ? '1개월' : type === '3m' ? '3개월' : '직접입력'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <div className="relative">
+                      <input 
+                        type="date" 
+                        value={startDate} 
+                        onChange={(e) => { setStartDate(e.target.value); setPeriodType('custom'); }}
+                        className="w-full p-3 bg-white rounded-xl border border-slate-200 text-[13px] font-bold outline-none shadow-sm"
+                      />
+                      <i className="fa-solid fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type="date" 
+                        value={endDate} 
+                        onChange={(e) => { setEndDate(e.target.value); setPeriodType('custom'); }}
+                        className="w-full p-3 bg-white rounded-xl border border-slate-200 text-[13px] font-bold outline-none shadow-sm"
+                      />
+                      <i className="fa-solid fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-1">
                   <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">필터 기준</label>
                   <select 
@@ -916,17 +956,21 @@
                   </div>
                 )}
               </div>
+
+              {/* Total Summary inside sticky header */}
+              <div className="mt-4 bg-slate-900/95 backdrop-blur-lg p-5 rounded-2xl shadow-xl border border-white/10 flex justify-between items-center gap-4 text-white">
+                <div className="min-w-0">
+                  <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">조회 결과: {filteredList.length}건</h4>
+                  <div className="text-[11px] text-indigo-300 font-bold uppercase truncate">{filterValue || filterType}</div>
+                </div>
+                <div className="text-right min-w-0">
+                  <div className="text-[11px] text-slate-400 font-black uppercase mb-1 truncate leading-none">합계 금액</div>
+                  <div className="text-xl font-black text-white money-text leading-none">{formatMoney(totalFiltered)}</div>
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col gap-5 pt-6">
-              <div className="px-2 mb-2 flex justify-between items-end gap-4">
-                <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest flex-shrink-0">결과: {filteredList.length}건</h4>
-                <div className="text-right min-w-0">
-                  <div className="text-[10px] text-slate-400 font-black uppercase mb-1 truncate leading-none">합계 {filterValue && `(${filterValue})`}</div>
-                  <div className="text-lg font-black text-indigo-600 money-text leading-none">{formatMoney(totalFiltered)}</div>
-                </div>
-              </div>
-              
               {filteredList.length === 0 ? (
                 <div className="text-center py-40 text-slate-400"><i className="fa-solid fa-magnifying-glass text-6xl mb-6 block opacity-20"></i>조건에 맞는 내역이 없습니다.</div>
               ) : (
@@ -1108,7 +1152,7 @@
                 {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} />}
                 {tab === 'planner' && <Planner sheet={monthSheet} onSave={handleSaveMonthSheet} currentMonth={currentMonth} />}
                 {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} />}
-                {tab === 'filter' && <FilterView allTransactions={allData.transactions} monthSheet={monthSheet} currentMonth={currentMonth} />}
+                {tab === 'filter' && <FilterView allTransactions={allData.transactions} allSheets={allData.monthSheets} currentMonth={currentMonth} />}
                 {tab === 'settings' && <Settings onBackup={async () => { 
                     const data = await dbOps.getAllData(); 
                     setBackupText(JSON.stringify(data));
