@@ -777,31 +777,17 @@
       const FilterView = ({ allTransactions, allSheets, currentMonth }) => {
         const [filterType, setFilterType] = useState('method'); // method, category, fixed_card, fixed_cash, unnecessary
         const [filterValue, setFilterValue] = useState('카드전체');
-        const [periodType, setPeriodType] = useState('monthly'); // monthly, 1m, 3m, custom
         const [startDate, setStartDate] = useState('');
         const [endDate, setEndDate] = useState('');
 
-        // Initialize dates
+        // Initialize dates to current month
         useEffect(() => {
-          const today = new Date();
-          const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-          
-          if (periodType === 'monthly') {
-            const [y, m] = currentMonth.split('-').map(Number);
-            const lastDayDate = new Date(y, m, 0);
-            const lastDayStr = `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
-            setStartDate(`${currentMonth}-01`);
-            setEndDate(lastDayStr);
-          } else if (periodType === '1m') {
-            const start = addMonths(todayStr, -1);
-            setStartDate(start);
-            setEndDate(todayStr);
-          } else if (periodType === '3m') {
-            const start = addMonths(todayStr, -3);
-            setStartDate(start);
-            setEndDate(todayStr);
-          }
-        }, [periodType, currentMonth]);
+          const [y, m] = currentMonth.split('-').map(Number);
+          const lastDayDate = new Date(y, m, 0);
+          const lastDayStr = `${y}-${String(m).padStart(2, '0')}-${String(lastDayDate.getDate()).padStart(2, '0')}`;
+          setStartDate(`${currentMonth}-01`);
+          setEndDate(lastDayStr);
+        }, [currentMonth]);
 
         const filteredList = useMemo(() => {
           if (!startDate || !endDate) return [];
@@ -869,36 +855,25 @@
               <div className="flex flex-col gap-4">
                 {/* Period Selection */}
                 <div className="flex flex-col gap-2">
-                  <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">이용 기간 (최근 3개월까지 조회 가능)</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {['monthly', '1m', '3m', 'custom'].map(type => (
-                      <button 
-                        key={type}
-                        onClick={() => setPeriodType(type)}
-                        className={`py-3 rounded-xl text-[13px] font-bold transition-all border ${periodType === type ? 'bg-slate-800 text-white border-slate-800 shadow-md' : 'bg-white text-slate-500 border-slate-200'}`}
-                      >
-                        {type === 'monthly' ? '월별' : type === '1m' ? '1개월' : type === '3m' ? '3개월' : '직접입력'}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 mt-1">
+                  <label className="text-[11px] font-black text-slate-400 ml-1 uppercase">이용 기간</label>
+                  <div className="grid grid-cols-2 gap-2">
                     <div className="relative">
                       <input 
                         type="date" 
                         value={startDate} 
-                        onChange={(e) => { setStartDate(e.target.value); setPeriodType('custom'); }}
-                        className="w-full p-3 bg-white rounded-xl border border-slate-200 text-[13px] font-bold outline-none shadow-sm"
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full p-2.5 bg-white rounded-xl border border-slate-200 text-[12px] font-bold outline-none shadow-sm"
                       />
-                      <i className="fa-solid fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                      <i className="fa-solid fa-calendar absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
                     </div>
                     <div className="relative">
                       <input 
                         type="date" 
                         value={endDate} 
-                        onChange={(e) => { setEndDate(e.target.value); setPeriodType('custom'); }}
-                        className="w-full p-3 bg-white rounded-xl border border-slate-200 text-[13px] font-bold outline-none shadow-sm"
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full p-2.5 bg-white rounded-xl border border-slate-200 text-[12px] font-bold outline-none shadow-sm"
                       />
-                      <i className="fa-solid fa-calendar absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                      <i className="fa-solid fa-calendar absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
                     </div>
                   </div>
                 </div>
