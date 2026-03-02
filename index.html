@@ -107,7 +107,6 @@
         font-weight: 700 !important;
       }
     </style>
-  <link rel="stylesheet" href="/index.css">
 </head>
   <body>
     <div id="root"></div>
@@ -290,19 +289,20 @@
                         (monthSheet.incomes.additional || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
         
         const mFixed = Object.values(monthSheet.fixedExpenses).reduce((sum, v) => sum + (v.actual || 0), 0);
-        const mActual = monthTransactions.reduce((acc, t) => acc + t.amount, 0);
-        const mBalance = mIncome - mFixed - mActual;
+        const mActual = monthTransactions.filter(t => !t.isUnnecessary && !t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
+        const mBalance = mIncome - mFixed - monthTransactions.reduce((acc, t) => acc + t.amount, 0);
         const mUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
+        const mUnexpected = monthTransactions.filter(t => t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
 
         const methodStats = PAYMENT_METHODS.reduce((acc, method) => {
           const fixedPart = Object.values(monthSheet.fixedExpenses).filter(v => v.method === method).reduce((vSum, v) => vSum + (v.actual || 0), 0);
-          const transPart = monthTransactions.filter(t => t.paymentMethod === method).reduce((sum, t) => sum + t.amount, 0);
+          const transPart = monthTransactions.filter(t => t.paymentMethod === method && !t.isUnnecessary && !t.isUnexpected).reduce((sum, t) => sum + t.amount, 0);
           acc[method] = fixedPart + transPart;
           return acc;
         }, {});
 
         const categoryStats = CATEGORIES.reduce((acc, cat) => {
-           acc[cat] = monthTransactions.filter(t => t.category === cat).reduce((sum, t) => sum + t.amount, 0);
+           acc[cat] = monthTransactions.filter(t => t.category === cat && !t.isUnnecessary && !t.isUnexpected).reduce((sum, t) => sum + t.amount, 0);
            return acc;
         }, {});
 
@@ -360,6 +360,10 @@
                <div className="mt-4 pt-4 border-t border-slate-50 flex justify-between items-center px-1 gap-2">
                   <span className="text-red-500 text-[13px] font-bold uppercase tracking-tight whitespace-nowrap">불필요한 지출 ⚠️</span>
                   <span className="text-red-600 font-black text-xl money-text">{formatMoney(mUnnecessary)}</span>
+               </div>
+               <div className="mt-2 pt-2 border-t border-slate-50 flex justify-between items-center px-1 gap-2">
+                  <span className="text-amber-500 text-[13px] font-bold uppercase tracking-tight whitespace-nowrap">예상외 지출 ⚡</span>
+                  <span className="text-amber-600 font-black text-xl money-text">{formatMoney(mUnexpected)}</span>
                </div>
             </div>
           </div>
@@ -665,7 +669,7 @@
         );
       };
 
-      const Ledger = ({ transactions, selectedDate, setSelectedDate, onDelete, onEdit, onToggleUnnecessary }) => {
+      const Ledger = ({ transactions, selectedDate, setSelectedDate, onDelete, onEdit, onToggleUnnecessary, currentMonth }) => {
         const [viewMode, setViewMode] = useState('daily');
         const [searchTerm, setSearchTerm] = useState('');
 
@@ -673,13 +677,14 @@
 
         const filtered = transactions.filter(t => {
             if (viewMode === 'daily') return t.date === selectedDate;
-            return true; 
+            return t.date.startsWith(currentMonth); 
         }).filter(t => 
             !searchTerm || t.desc.includes(searchTerm) || t.category.includes(searchTerm) || (t.memo && t.memo.includes(searchTerm))
         ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        const total = filtered.reduce((acc, t) => acc + t.amount, 0);
+        const total = filtered.filter(t => !t.isUnnecessary && !t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
         const unnecessaryTotal = filtered.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
+        const unexpectedTotal = filtered.filter(t => t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
 
         const renderTransactions = () => {
             if (filtered.length === 0) {
@@ -702,16 +707,14 @@
                                 <div className="h-[1.5px] flex-1 bg-gradient-to-r from-slate-200 to-transparent"></div>
                             </div>
                         )}
-                        <div className={`bg-white px-5 py-5 rounded-[32px] shadow-sm border border-slate-100 flex items-center gap-4 transition-all active:scale-[0.98] ${tx.isUnnecessary ? 'bg-red-50/40 border-red-100' : ''}`}>
-                            <div className={`custom-checkbox ${tx.isUnnecessary ? 'checked' : ''}`} onClick={() => onToggleUnnecessary(tx)}>
-                                {tx.isUnnecessary && <i className="fa-solid fa-check text-sm"></i>}
-                            </div>
-                            
-                            <div className="flex-1 min-w-0" onClick={() => onEdit(tx)}>
+                        <div onClick={() => onEdit(tx)} className={`bg-white px-5 py-5 rounded-[32px] shadow-sm border border-slate-100 flex items-center gap-4 transition-all active:scale-[0.98] ${tx.isUnnecessary ? 'bg-red-50/40 border-red-100' : tx.isUnexpected ? 'bg-amber-50/40 border-amber-100' : ''}`}>
+                            <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-3 mb-1.5 flex-wrap">
                                     <span className="text-[13px] font-bold text-slate-400 flex-shrink-0">{tx.date.slice(5)}</span>
                                     <span className={`text-[10px] px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter whitespace-nowrap ${tx.category==='식비'?'bg-blue-50 text-blue-600':tx.category==='외식비'?'bg-orange-50 text-orange-600':tx.category==='생활비'?'bg-emerald-50 text-emerald-600':tx.category==='기타'?'bg-slate-50 text-slate-600':'bg-amber-50 text-amber-600'}`}>{tx.category}</span>
                                     {tx.isInstallment && <span className="text-[10px] px-2 bg-purple-50 text-purple-500 rounded-lg font-black italic border border-purple-100 whitespace-nowrap">할부</span>}
+                                    {tx.isUnnecessary && <span className="text-[10px] px-2 bg-red-100 text-red-600 rounded-lg font-black whitespace-nowrap">불필요</span>}
+                                    {tx.isUnexpected && <span className="text-[10px] px-2 bg-amber-100 text-amber-600 rounded-lg font-black whitespace-nowrap">예상외</span>}
                                 </div>
                                 <div className="font-bold text-slate-800 text-sm truncate">{tx.desc}</div>
                                 {tx.memo && <div className="text-[11px] text-slate-500 mt-1 line-clamp-1 italic px-2 py-0.5 bg-indigo-50/30 border-l-2 border-indigo-200 truncate">"{tx.memo}"</div>}
@@ -758,15 +761,23 @@
              </div>
 
              <div className="fixed bottom-[110px] left-0 right-0 max-w-md mx-auto px-6 pointer-events-none z-50">
-                <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[36px] shadow-2xl flex justify-between gap-6 pointer-events-auto border border-white/10">
-                    <div className="flex-1 min-w-0">
-                        <div className="text-[13px] text-slate-500 font-bold mb-1 uppercase tracking-widest whitespace-nowrap">변동지출 합계</div>
-                        <div className="text-xl font-black text-white money-text">{formatMoney(total)}</div>
+                <div className="bg-slate-900/95 backdrop-blur-lg p-5 rounded-[36px] shadow-2xl flex flex-col gap-3 pointer-events-auto border border-white/10">
+                    <div className="flex justify-between items-center">
+                        <div className="min-w-0">
+                            <div className="text-[11px] text-slate-500 font-bold uppercase tracking-widest whitespace-nowrap">변동지출 합계</div>
+                            <div className="text-xl font-black text-white money-text">{formatMoney(total)}</div>
+                        </div>
+                        <div className="text-right min-w-0">
+                            <div className="text-[11px] text-red-400 font-bold uppercase tracking-widest whitespace-nowrap">불필요한 지출 ⚠️</div>
+                            <div className="text-lg font-black text-red-400 money-text">{formatMoney(unnecessaryTotal)}</div>
+                        </div>
                     </div>
-                    <div className="w-px bg-white/10 shrink-0"></div>
-                    <div className="flex-1 text-right min-w-0">
-                        <div className="text-[13px] text-red-400 font-bold mb-1 uppercase tracking-widest whitespace-nowrap">불필요한 지출 ⚠️</div>
-                        <div className="text-xl font-black text-red-400 money-text">{formatMoney(unnecessaryTotal)}</div>
+                    <div className="h-px bg-white/10 w-full"></div>
+                    <div className="flex justify-end">
+                        <div className="text-right min-w-0">
+                            <div className="text-[11px] text-amber-400 font-bold uppercase tracking-widest whitespace-nowrap">예상외 지출 ⚡</div>
+                            <div className="text-lg font-black text-amber-400 money-text">{formatMoney(unexpectedTotal)}</div>
+                        </div>
                     </div>
                 </div>
              </div>
@@ -842,12 +853,19 @@
             list = combined.filter(item => item.type === 'fixed' && item.paymentMethod === '현금');
           } else if (filterType === 'unnecessary') {
             list = combined.filter(item => item.type === 'variable' && item.isUnnecessary);
+          } else if (filterType === 'unexpected') {
+            list = combined.filter(item => item.type === 'variable' && item.isUnexpected);
           }
           
           return list.sort((a, b) => new Date(b.date) - new Date(a.date));
         }, [filterType, filterValue, startDate, endDate, allTransactions, allSheets]);
 
-        const totalFiltered = filteredList.reduce((acc, item) => acc + item.amount, 0);
+        const totalFiltered = filteredList.reduce((acc, item) => {
+          if (filterType !== 'unnecessary' && filterType !== 'unexpected') {
+            if (item.isUnnecessary || item.isUnexpected) return acc;
+          }
+          return acc + item.amount;
+        }, 0);
 
         return (
           <div className="animate-fade-in pb-48 flex flex-col">
@@ -895,6 +913,7 @@
                     <option value="fixed_card">🗂️ 카드 고정지출</option>
                     <option value="fixed_cash">💵 현금 고정지출</option>
                     <option value="unnecessary">⚠️ 불필요한 지출</option>
+                    <option value="unexpected">⚡ 예상외 지출</option>
                   </select>
                 </div>
                 
@@ -909,7 +928,7 @@
                       {filterType === 'method' || filterType === 'fixed_card' ? (
                           <>
                             <option value="카드전체">💳 카드전체 (현금제외)</option>
-                            {PAYMENT_METHODS.filter(m => m !== '현금').map(val => (
+                            {PAYMENT_METHODS.map(val => (
                                 <option key={val} value={val}>{val}</option>
                             ))}
                           </>
@@ -958,6 +977,8 @@
                           {item.category}
                         </span>
                         {item.type === 'fixed' && <span className="text-[10px] font-black text-purple-400 italic">FIXED</span>}
+                        {item.isUnnecessary && <span className="text-[10px] px-2 bg-red-100 text-red-600 rounded-lg font-black whitespace-nowrap">불필요</span>}
+                        {item.isUnexpected && <span className="text-[10px] px-2 bg-amber-100 text-amber-600 rounded-lg font-black whitespace-nowrap">예상외</span>}
                       </div>
                       <div className="font-bold text-slate-800 text-sm truncate">{item.desc}</div>
                       <div className="text-[11px] text-indigo-400 font-bold mt-1 uppercase tracking-tighter truncate">{item.paymentMethod}</div>
@@ -1049,7 +1070,8 @@
                         paymentMethod: fd.get('paymentMethod'),
                         isInstallment: true,
                         installmentMonths: months,
-                        isUnnecessary: editingTx?.isUnnecessary || false
+                        isUnnecessary: fd.get('isUnnecessary') === 'on',
+                        isUnexpected: fd.get('isUnexpected') === 'on'
                     });
                 }
             } else {
@@ -1063,7 +1085,8 @@
                     paymentMethod: fd.get('paymentMethod'),
                     isInstallment,
                     installmentMonths: months,
-                    isUnnecessary: editingTx?.isUnnecessary || false
+                    isUnnecessary: fd.get('isUnnecessary') === 'on',
+                    isUnexpected: fd.get('isUnexpected') === 'on'
                 });
             }
             setIsAddModalOpen(false);
@@ -1126,7 +1149,7 @@
              <main className="flex-1 px-5 pb-4 pt-0 relative flex flex-col">
                 {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} />}
                 {tab === 'planner' && <Planner sheet={monthSheet} onSave={handleSaveMonthSheet} currentMonth={currentMonth} />}
-                {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} />}
+                {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} currentMonth={currentMonth} />}
                 {tab === 'filter' && <FilterView allTransactions={allData.transactions} allSheets={allData.monthSheets} currentMonth={currentMonth} />}
                 {tab === 'settings' && <Settings onBackup={async () => { 
                     const data = await dbOps.getAllData(); 
@@ -1200,6 +1223,20 @@
                                   <span className="text-sm font-bold text-slate-400">개월</span>
                                 </div>
                             )}
+                         </div>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                              <label className="flex items-center gap-3 cursor-pointer flex-1">
+                                  <input type="checkbox" name="isUnnecessary" defaultChecked={editingTx?.isUnnecessary} className="w-6 h-6 text-red-600 rounded-lg" />
+                                  <span className="text-sm font-black text-slate-700">불필요한 지출</span>
+                              </label>
+                           </div>
+                           <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                              <label className="flex items-center gap-3 cursor-pointer flex-1">
+                                  <input type="checkbox" name="isUnexpected" defaultChecked={editingTx?.isUnexpected} className="w-6 h-6 text-amber-600 rounded-lg" />
+                                  <span className="text-sm font-black text-slate-700">예상외 지출</span>
+                              </label>
+                           </div>
                          </div>
                          <button type="submit" className="w-full py-5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-[28px] font-black shadow-xl mt-4 active:scale-[0.98] transition-all text-lg tracking-tight">저장하기</button>
                       </form>
@@ -1301,6 +1338,5 @@
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(<App />);
     </script>
-  <script type="module" src="/index.tsx"></script>
 </body>
 </html>
