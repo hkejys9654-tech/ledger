@@ -860,12 +860,7 @@
           return list.sort((a, b) => new Date(b.date) - new Date(a.date));
         }, [filterType, filterValue, startDate, endDate, allTransactions, allSheets]);
 
-        const totalFiltered = filteredList.reduce((acc, item) => {
-          if (filterType !== 'unnecessary' && filterType !== 'unexpected') {
-            if (item.isUnnecessary || item.isUnexpected) return acc;
-          }
-          return acc + item.amount;
-        }, 0);
+        const totalFiltered = filteredList.reduce((acc, item) => acc + item.amount, 0);
 
         return (
           <div className="animate-fade-in pb-48 flex flex-col">
