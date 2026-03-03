@@ -296,7 +296,7 @@
 
         const methodStats = PAYMENT_METHODS.reduce((acc, method) => {
           const fixedPart = Object.values(monthSheet.fixedExpenses).filter(v => v.method === method).reduce((vSum, v) => vSum + (v.actual || 0), 0);
-          const transPart = monthTransactions.filter(t => t.paymentMethod === method && !t.isUnnecessary && !t.isUnexpected).reduce((sum, t) => sum + t.amount, 0);
+          const transPart = monthTransactions.filter(t => t.paymentMethod === method).reduce((sum, t) => sum + t.amount, 0);
           acc[method] = fixedPart + transPart;
           return acc;
         }, {});
