@@ -13,6 +13,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
     <style>
       body { font-family: 'Noto Sans KR', sans-serif; background-color: #f3f4f6; -webkit-tap-highlight-color: transparent; font-size: 16px; margin: 0; padding: 0; }
@@ -306,10 +307,76 @@
            return acc;
         }, {});
 
+        const handleExportExcel = () => {
+          const wb = XLSX.utils.book_new();
+
+          // Sheet 1: 월간 요약
+          const summaryData = [
+            ["항목", "내용"],
+            ["기준 월", currentMonth],
+            ["총 수입", mIncome],
+            ["고정지출 합계", mFixed],
+            ["변동지출 합계 (순수)", mActual],
+            ["잔액", mBalance],
+            ["불필요한 지출", mUnnecessary],
+            ["예상외 지출", mUnexpected]
+          ];
+          const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+          XLSX.utils.book_append_sheet(wb, wsSummary, "월간 요약");
+
+          // Sheet 2: 고정 예산
+          const fixedData = [
+            ["항목", "계획 금액", "실제 지출", "결제 수단"]
+          ];
+          // Incomes
+          Object.keys(INCOME_LABELS).forEach(k => {
+            fixedData.push([INCOME_LABELS[k], "", monthSheet.incomes[k]?.amount || 0, "현금"]);
+          });
+          (monthSheet.incomes.additional || []).forEach(item => {
+            fixedData.push([item.desc || "추가수입", "", item.amount || 0, "현금"]);
+          });
+          // Fixed Expenses
+          Object.keys(FIXED_LABELS).forEach(k => {
+            const v = monthSheet.fixedExpenses[k];
+            fixedData.push([FIXED_LABELS[k], v?.planned || 0, v?.actual || 0, v?.method || "현금"]);
+          });
+          const wsFixed = XLSX.utils.aoa_to_sheet(fixedData);
+          XLSX.utils.book_append_sheet(wb, wsFixed, "고정 예산");
+
+          // Sheet 3: 변동 지출
+          const transData = [
+            ["날짜", "카테고리", "결제 수단", "내용", "금액", "할부 여부", "불필요 여부", "예상외 여부", "메모"]
+          ];
+          monthTransactions.sort((a, b) => new Date(a.date) - new Date(b.date)).forEach(t => {
+            transData.push([
+              t.date,
+              t.category,
+              t.paymentMethod,
+              t.desc,
+              t.amount,
+              t.isInstallment ? "O" : "X",
+              t.isUnnecessary ? "O" : "X",
+              t.isUnexpected ? "O" : "X",
+              t.memo || ""
+            ]);
+          });
+          const wsTrans = XLSX.utils.aoa_to_sheet(transData);
+          XLSX.utils.book_append_sheet(wb, wsTrans, "변동 지출");
+
+          XLSX.writeFile(wb, `가계부_${currentMonth}.xlsx`);
+        };
+
         return (
           <div className="animate-fade-in pb-48 flex flex-col gap-6 pt-6">
             <div className="bg-gradient-to-br from-purple-800 to-indigo-700 rounded-[36px] p-6 text-white shadow-xl relative overflow-hidden">
                <div className="absolute -top-4 -right-4 opacity-10"><i className="fa-solid fa-calendar-check text-9xl"></i></div>
+               <button 
+                 onClick={handleExportExcel} 
+                 title="엑셀 다운로드"
+                 className="absolute top-6 right-6 w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-all active:scale-95 z-20 border border-white/20 shadow-lg"
+               >
+                 <i className="fa-solid fa-file-excel text-xl"></i>
+               </button>
                <div className="relative z-10">
                  <h2 className="text-indigo-200 text-[13px] font-bold uppercase tracking-wider">{currentMonth}월 총 잔액</h2>
                  <h1 className="text-2xl font-black mt-2 money-text leading-tight">{formatMoney(mBalance)}</h1>
