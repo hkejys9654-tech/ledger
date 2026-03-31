@@ -140,7 +140,7 @@
         overtime: '⏰ 초과수당'
       };
       
-      const PAYMENT_METHODS = ['롯데카드', '현대카드', '신한카드', '체크카드', '현금'];
+      const PAYMENT_METHODS = ['롯데카드', '현대카드', '신한카드', '광주카드', '체크카드', '현금'];
       const CATEGORIES = ['식비', '외식비', '생활비', '기타', '기타현금지출'];
       const DAYS = Array.from({length: 31}, (_, i) => i + 1);
 
@@ -473,7 +473,7 @@
           return acc;
         }, {});
 
-        const cardMethods = ['롯데카드', '현대카드', '신한카드', '체크카드'];
+        const cardMethods = ['롯데카드', '현대카드', '신한카드', '광주카드', '체크카드'];
         const cardPlannedTotal = cardMethods.reduce((sum, m) => sum + (fixedStats[m]?.planned || 0), 0);
         const cardActualTotal = cardMethods.reduce((sum, m) => sum + (fixedStats[m]?.actual || 0), 0);
         const cashPlannedTotal = fixedStats['현금']?.planned || 0;
