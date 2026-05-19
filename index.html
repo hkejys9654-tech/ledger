@@ -344,8 +344,7 @@
 
   // --- COMPONENTS ---
 
-  // ✅ FIX 2: setTab prop 추가
-  const Dashboard = ({ allSheets, allTransactions, currentMonth, setTab }) => {
+  const Dashboard = ({ allSheets, allTransactions, currentMonth }) => {
     const monthSheet = allSheets.find(s => s.month === currentMonth) || createInitialMonthSheet(currentMonth);
     const monthTransactions = allTransactions.filter(t => t.date.startsWith(currentMonth));
     
@@ -458,8 +457,7 @@
               <div className="section-title"><i className="fa-solid fa-credit-card text-[#7047d7]"></i> 결제수단별 지출</div>
               <div className="section-caption mt-1">고정지출과 변동지출을 합산했어요</div>
             </div>
-            {/* ✅ FIX 3: 더보기 → filter 탭 이동 */}
-            <button onClick={() => setTab('filter')} className="text-[11px] font-black text-[#7047d7] active:opacity-60">더보기 〉</button>
+            <span className="text-[11px] font-black text-slate-400">더보기 〉</span>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {PAYMENT_METHODS.map((m, idx) => (
@@ -480,8 +478,7 @@
               <div className="section-title"><i className="fa-solid fa-chart-pie text-[#7047d7]"></i> 변동지출 카테고리</div>
               <div className="section-caption mt-1">월별 카테고리 흐름 확인</div>
             </div>
-            {/* ✅ FIX 4: 더보기 → filter 탭 이동 */}
-            <button onClick={() => setTab('filter')} className="text-[11px] font-black text-[#7047d7] active:opacity-60">더보기 〉</button>
+            <span className="text-[11px] font-black text-slate-400">더보기 〉</span>
           </div>
           <div className="flex items-center gap-5">
             <div className="donut flex-shrink-0"><div className="donut-center"><span className="text-[11px] text-slate-400">변동지출 합계</span><span>{formatMoney(mActual)}</span></div></div>
@@ -1262,8 +1259,9 @@
       <div className="app-shell font-sans flex flex-col">
          
          <div className="app-header">
-           {/* 왼쪽 빈 공간 (레이아웃 균형용) */}
-           <div style={{width:'36px', flexShrink:0}}></div>
+           <button className="header-icon" onClick={() => tab === 'dashboard' ? window.location.reload() : setTab('dashboard')} aria-label="홈으로">
+             <i className="fa-solid fa-chevron-left" style={{opacity: tab === 'dashboard' ? 0 : 1}}></i>
+           </button>
            <div className="app-title-wrap">
              {tab === 'dashboard' ? (
                <>
@@ -1277,13 +1275,13 @@
                </>
              )}
            </div>
-           {/* 오른쪽 빈 공간 (레이아웃 균형용) */}
-           <div style={{width:'36px', flexShrink:0}}></div>
+           <button className="header-icon" onClick={() => setTab('settings')} aria-label="시스템">
+             <i className="fa-regular fa-bell"></i>
+           </button>
          </div>
 
          <main className="app-main">
-            {/* ✅ FIX 5: setTab prop 전달 */}
-            {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} setTab={setTab} />}
+            {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} />}
             {tab === 'planner' && <Planner sheet={monthSheet} onSave={handleSaveMonthSheet} currentMonth={currentMonth} />}
             {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} currentMonth={currentMonth} />}
             {tab === 'filter' && <FilterView allTransactions={allData.transactions} allSheets={allData.monthSheets} currentMonth={currentMonth} />}
