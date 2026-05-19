@@ -3,9 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#7047d7" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Garong's Ledger</title>
+
+  <!-- PWA / iPhone Home Screen Icon -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./icon.png" />
+  <link rel="apple-touch-icon" href="./icon.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icon.png" />
+  <meta name="theme-color" content="#7047d7" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="가계부" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -73,7 +82,7 @@
     padding:16px 20px 10px;
     display:flex;
     align-items:center;
-    justify-content:center;
+    justify-content:space-between;
     gap:12px;
     background:rgba(248,247,252,.82);
     backdrop-filter:blur(24px);
@@ -335,32 +344,29 @@
 
   // --- COMPONENTS ---
 
-  const Dashboard = ({ allSheets, allTransactions, currentMonth, onGoTab = () => {} }) => {
+  const Dashboard = ({ allSheets, allTransactions, currentMonth }) => {
     const monthSheet = allSheets.find(s => s.month === currentMonth) || createInitialMonthSheet(currentMonth);
     const monthTransactions = allTransactions.filter(t => t.date.startsWith(currentMonth));
     
     const mIncome = Object.keys(INCOME_LABELS).reduce((acc, k) => acc + (monthSheet.incomes[k]?.amount || 0), 0) + 
                     (monthSheet.incomes.additional || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     
-    const mFixed = Object.values(monthSheet.fixedExpenses).reduce((sum, v) => sum + (Number(v.actual) || 0), 0);
-    // 대시보드의 '변동지출 합계'는 사용자가 기록한 변동지출 전체를 보여줘야 하므로
-    // 불필요/예상외 체크 여부와 관계없이 월별 거래 전체를 합산합니다.
-    const mVariableTotal = monthTransactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-    const mActual = mVariableTotal;
-    const mTotalExpense = mFixed + mVariableTotal;
+    const mFixed = Object.values(monthSheet.fixedExpenses).reduce((sum, v) => sum + (v.actual || 0), 0);
+    const mActual = monthTransactions.filter(t => !t.isUnnecessary && !t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
+    const mTotalExpense = mFixed + monthTransactions.reduce((acc, t) => acc + t.amount, 0);
     const mBalance = mIncome - mTotalExpense;
-    const mUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-    const mUnexpected = monthTransactions.filter(t => t.isUnexpected).reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    const mUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
+    const mUnexpected = monthTransactions.filter(t => t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
 
     const methodStats = PAYMENT_METHODS.reduce((acc, method) => {
-      const fixedPart = Object.values(monthSheet.fixedExpenses).filter(v => v.method === method).reduce((vSum, v) => vSum + (Number(v.actual) || 0), 0);
-      const transPart = monthTransactions.filter(t => t.paymentMethod === method).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+      const fixedPart = Object.values(monthSheet.fixedExpenses).filter(v => v.method === method).reduce((vSum, v) => vSum + (v.actual || 0), 0);
+      const transPart = monthTransactions.filter(t => t.paymentMethod === method).reduce((sum, t) => sum + t.amount, 0);
       acc[method] = fixedPart + transPart;
       return acc;
     }, {});
 
     const categoryStats = CATEGORIES.reduce((acc, cat) => {
-       acc[cat] = monthTransactions.filter(t => t.category === cat).reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+       acc[cat] = monthTransactions.filter(t => t.category === cat && !t.isUnnecessary && !t.isUnexpected).reduce((sum, t) => sum + t.amount, 0);
        return acc;
     }, {});
 
@@ -368,7 +374,7 @@
       name: cat,
       amount: categoryStats[cat] || 0,
       percent: Math.round(((categoryStats[cat] || 0) / Math.max(1, mActual)) * 100),
-      colorClass: ['bg-[#7047d7]','bg-blue-500','bg-emerald-400','bg-orange-400','bg-slate-300'][idx]
+      colorClass: ['bg-[#f1ebff]0','bg-blue-500','bg-emerald-400','bg-orange-400','bg-slate-300'][idx]
     }));
 
     const handleExportExcel = () => {
@@ -440,8 +446,8 @@
           </div>
           <div className="ios-card p-4">
             <div className="section-caption mb-2">총 지출</div>
-            <div className="text-[18px] font-black tracking-[-0.05em] money-text">{formatMoney(mTotalExpense)}</div>
-            <div className="tiny-progress mt-3"><div style={{width:`${Math.min(100, (mTotalExpense / Math.max(1, mIncome)) * 100)}%`, background:'linear-gradient(90deg,#ff8ea0,#ff647c)'}}></div></div>
+            <div className="text-[18px] font-black tracking-[-0.05em] money-text">{formatMoney(mFixed + mActual)}</div>
+            <div className="tiny-progress mt-3"><div style={{width:`${Math.min(100, ((mFixed + mActual) / Math.max(1, mIncome)) * 100)}%`, background:'linear-gradient(90deg,#ff8ea0,#ff647c)'}}></div></div>
           </div>
         </div>
 
@@ -451,7 +457,7 @@
               <div className="section-title"><i className="fa-solid fa-credit-card text-[#7047d7]"></i> 결제수단별 지출</div>
               <div className="section-caption mt-1">고정지출과 변동지출을 합산했어요</div>
             </div>
-            <button type="button" onClick={() => onGoTab('filter')} className="text-[11px] font-black text-[#7047d7] bg-[#f1ebff] px-3 py-2 rounded-full active:scale-95 transition-all">더보기 〉</button>
+            <span className="text-[11px] font-black text-slate-400">더보기 〉</span>
           </div>
           <div className="grid grid-cols-3 gap-3">
             {PAYMENT_METHODS.map((m, idx) => (
@@ -472,7 +478,7 @@
               <div className="section-title"><i className="fa-solid fa-chart-pie text-[#7047d7]"></i> 변동지출 카테고리</div>
               <div className="section-caption mt-1">월별 카테고리 흐름 확인</div>
             </div>
-            <button type="button" onClick={() => onGoTab('ledger')} className="text-[11px] font-black text-[#7047d7] bg-[#f1ebff] px-3 py-2 rounded-full active:scale-95 transition-all">더보기 〉</button>
+            <span className="text-[11px] font-black text-slate-400">더보기 〉</span>
           </div>
           <div className="flex items-center gap-5">
             <div className="donut flex-shrink-0"><div className="donut-center"><span className="text-[11px] text-slate-400">변동지출 합계</span><span>{formatMoney(mActual)}</span></div></div>
@@ -1253,6 +1259,9 @@
       <div className="app-shell font-sans flex flex-col">
          
          <div className="app-header">
+           <button className="header-icon" onClick={() => tab === 'dashboard' ? window.location.reload() : setTab('dashboard')} aria-label="홈으로">
+             <i className="fa-solid fa-chevron-left" style={{opacity: tab === 'dashboard' ? 0 : 1}}></i>
+           </button>
            <div className="app-title-wrap">
              {tab === 'dashboard' ? (
                <>
@@ -1266,10 +1275,13 @@
                </>
              )}
            </div>
+           <button className="header-icon" onClick={() => setTab('settings')} aria-label="시스템">
+             <i className="fa-regular fa-bell"></i>
+           </button>
          </div>
 
          <main className="app-main">
-            {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} onGoTab={(target) => { setTab(target); window.scrollTo(0, 0); }} />}
+            {tab === 'dashboard' && <Dashboard allSheets={allData.monthSheets} allTransactions={allData.transactions} currentMonth={currentMonth} />}
             {tab === 'planner' && <Planner sheet={monthSheet} onSave={handleSaveMonthSheet} currentMonth={currentMonth} />}
             {tab === 'ledger' && <Ledger transactions={allData.transactions} selectedDate={selectedDate} setSelectedDate={setSelectedDate} onDelete={setDeleteTargetId} onEdit={(tx) => { setEditingTx(tx); setInstallmentChecked(tx.isInstallment); setIsAddModalOpen(true); }} onToggleUnnecessary={handleToggleUnnecessary} currentMonth={currentMonth} />}
             {tab === 'filter' && <FilterView allTransactions={allData.transactions} allSheets={allData.monthSheets} currentMonth={currentMonth} />}
