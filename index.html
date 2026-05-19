@@ -416,6 +416,9 @@
     const mActual = monthTransactions.filter(t => !t.isUnnecessary && !t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
     const mTotalExpense = mFixed + mVariableTotal;
     const mBalance = mIncome - mTotalExpense;
+    const dashboardMaxTotal = Math.max(mIncome, mFixed + mVariableTotal, 1);
+    const incomeProgress = Math.min(100, (mIncome / dashboardMaxTotal) * 100);
+    const expenseProgress = Math.min(100, ((mFixed + mVariableTotal) / dashboardMaxTotal) * 100);
     const mUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
     const mUnexpected = monthTransactions.filter(t => t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
 
@@ -520,12 +523,12 @@
           <div className="ios-card p-4">
             <div className="section-caption mb-2">총 수입</div>
             <div className="text-[18px] font-black tracking-[-0.05em] money-text">{formatMoney(mIncome)}</div>
-            <div className="tiny-progress mt-3"><div style={{width:'94%'}}></div></div>
+            <div className="tiny-progress mt-3"><div style={{width:`${incomeProgress}%`}}></div></div>
           </div>
           <div className="ios-card p-4">
             <div className="section-caption mb-2">총 지출</div>
             <div className="text-[18px] font-black tracking-[-0.05em] money-text">{formatMoney(mFixed + mVariableTotal)}</div>
-            <div className="tiny-progress mt-3"><div style={{width:`${Math.min(100, ((mFixed + mActual) / Math.max(1, mIncome)) * 100)}%`, background:'linear-gradient(90deg,#ff8ea0,#ff647c)'}}></div></div>
+            <div className="tiny-progress mt-3"><div style={{width:`${expenseProgress}%`, background:'linear-gradient(90deg,#ff8ea0,#ff647c)'}}></div></div>
           </div>
         </div>
 
@@ -756,7 +759,7 @@
                   </div>
                   <input type="text" value={tempSheet.incomes[k].amount === 0 ? '' : tempSheet.incomes[k].amount.toLocaleString()} placeholder="0" disabled={!isEditing}
                     onChange={(e) => handleIncomeChange(k, 'amount', e.target.value)}
-                    className="w-full text-right p-3 rounded-2xl text-sm bg-slate-100 font-black text-slate-800 focus:bg-slate-200 outline-none border border-slate-200 transition-colors" />
+                    className="w-1/2 ml-auto text-right p-3 rounded-2xl text-sm bg-slate-100 font-black text-slate-800 focus:bg-slate-200 outline-none border border-slate-200 transition-colors" />
                 </div>
               ))}
               
@@ -777,7 +780,7 @@
                             {DAYS.map(d => <option key={d} value={d}>{d}일</option>)}
                           </select>
                           <input type="text" value={item.amount === 0 ? '' : item.amount.toLocaleString()} placeholder="0" disabled={!isEditing} onChange={e => updateIncomeItem(item.id, 'amount', e.target.value)}
-                            className="flex-1 p-3 rounded-2xl text-sm bg-slate-100 font-black text-slate-800 text-right outline-none border border-slate-200 min-w-0 focus:bg-slate-200 transition-colors" />
+                            className="w-1/2 ml-auto p-3 rounded-2xl text-sm bg-slate-100 font-black text-slate-800 text-right outline-none border border-slate-200 min-w-0 focus:bg-slate-200 transition-colors" />
                       </div>
                     </div>
                   ))}
@@ -908,7 +911,7 @@
         !searchTerm || t.desc.includes(searchTerm) || t.category.includes(searchTerm) || (t.memo && t.memo.includes(searchTerm))
     ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    const total = filtered.filter(t => !t.isUnnecessary && !t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
+    const total = filtered.reduce((acc, t) => acc + t.amount, 0);
     const unnecessaryTotal = filtered.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
     const unexpectedTotal = filtered.filter(t => t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
 
@@ -1270,6 +1273,12 @@
         const fd = new FormData(e.currentTarget);
         const originDate = fd.get('date');
         const originAmount = cleanMoney(fd.get('amount'));
+        const isUnnecessaryFlag = fd.get('isUnnecessary') === 'on';
+        const isUnexpectedFlag = fd.get('isUnexpected') === 'on';
+        if (isUnnecessaryFlag && isUnexpectedFlag) {
+            const ok = confirm("불필요한 지출과 예상외 지출이 동시에 체크되어 있습니다. 중복 체크인데 진행하시겠습니까?");
+            if (!ok) return;
+        }
         const isInstallment = fd.get('isInstallment') === 'on';
         const months = isInstallment ? (Number(fd.get('installmentMonths')) || 1) : 1;
         const baseDesc = fd.get('desc');
@@ -1291,8 +1300,8 @@
                     paymentMethod: fd.get('paymentMethod'),
                     isInstallment: true,
                     installmentMonths: months,
-                    isUnnecessary: fd.get('isUnnecessary') === 'on',
-                    isUnexpected: fd.get('isUnexpected') === 'on'
+                    isUnnecessary: isUnnecessaryFlag,
+                    isUnexpected: isUnexpectedFlag
                 });
             }
         } else {
@@ -1306,8 +1315,8 @@
                 paymentMethod: fd.get('paymentMethod'),
                 isInstallment,
                 installmentMonths: months,
-                isUnnecessary: fd.get('isUnnecessary') === 'on',
-                isUnexpected: fd.get('isUnexpected') === 'on'
+                isUnnecessary: isUnnecessaryFlag,
+                isUnexpected: isUnexpectedFlag
             });
         }
         setIsAddModalOpen(false);
