@@ -412,8 +412,9 @@
                     (monthSheet.incomes.additional || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     
     const mFixed = Object.values(monthSheet.fixedExpenses).reduce((sum, v) => sum + (v.actual || 0), 0);
+    const mVariableTotal = monthTransactions.reduce((acc, t) => acc + t.amount, 0);
     const mActual = monthTransactions.filter(t => !t.isUnnecessary && !t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
-    const mTotalExpense = mFixed + monthTransactions.reduce((acc, t) => acc + t.amount, 0);
+    const mTotalExpense = mFixed + mVariableTotal;
     const mBalance = mIncome - mTotalExpense;
     const mUnnecessary = monthTransactions.filter(t => t.isUnnecessary).reduce((acc, t) => acc + t.amount, 0);
     const mUnexpected = monthTransactions.filter(t => t.isUnexpected).reduce((acc, t) => acc + t.amount, 0);
@@ -444,7 +445,7 @@
         ["기준 월", currentMonth],
         ["총 수입", mIncome],
         ["고정지출 합계", mFixed],
-        ["변동지출 합계 (순수)", mActual],
+        ["변동지출 합계", mVariableTotal],
         ["잔액", mBalance],
         ["불필요한 지출", mUnnecessary],
         ["예상외 지출", mUnexpected]
@@ -550,7 +551,7 @@
             <button onClick={() => setTab('ledger')} className="text-[11px] font-black text-[#7047d7] active:opacity-60">더보기 〉</button>
           </div>
           <div className="flex items-center gap-5">
-            <div className="donut flex-shrink-0"><div className="donut-center"><span className="text-[11px] text-slate-400">변동지출 합계</span><span>{formatMoney(mActual)}</span></div></div>
+            <div className="donut flex-shrink-0"><div className="donut-center"><span className="text-[11px] text-slate-400">변동지출 합계</span><span>{formatMoney(mVariableTotal)}</span></div></div>
             <div className="flex-1 space-y-2 min-w-0">
               {categoryRows.map((row) => (
                 <div key={row.name} className="flex items-center justify-between gap-2">
