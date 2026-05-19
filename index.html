@@ -1262,10 +1262,8 @@
       <div className="app-shell font-sans flex flex-col">
          
          <div className="app-header">
-           {/* ✅ FIX 1: opacity → visibility:hidden (대시보드에서 버튼 공간 유지하되 완전히 숨김) */}
-           <button className="header-icon" onClick={() => tab === 'dashboard' ? window.location.reload() : setTab('dashboard')} aria-label="홈으로">
-             <i className="fa-solid fa-chevron-left" style={{visibility: tab === 'dashboard' ? 'hidden' : 'visible'}}></i>
-           </button>
+           {/* 왼쪽 빈 공간 (레이아웃 균형용) */}
+           <div style={{width:'36px', flexShrink:0}}></div>
            <div className="app-title-wrap">
              {tab === 'dashboard' ? (
                <>
@@ -1279,9 +1277,8 @@
                </>
              )}
            </div>
-           <button className="header-icon" onClick={() => setTab('settings')} aria-label="시스템">
-             <i className="fa-regular fa-bell"></i>
-           </button>
+           {/* 오른쪽 빈 공간 (레이아웃 균형용) */}
+           <div style={{width:'36px', flexShrink:0}}></div>
          </div>
 
          <main className="app-main">
