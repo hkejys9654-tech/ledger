@@ -427,14 +427,14 @@
     }, {});
 
     const categoryStats = CATEGORIES.reduce((acc, cat) => {
-       acc[cat] = monthTransactions.filter(t => t.category === cat && !t.isUnnecessary && !t.isUnexpected).reduce((sum, t) => sum + t.amount, 0);
+       acc[cat] = monthTransactions.filter(t => t.category === cat).reduce((sum, t) => sum + t.amount, 0);
        return acc;
     }, {});
 
     const categoryRows = CATEGORIES.map((cat, idx) => ({
       name: cat,
       amount: categoryStats[cat] || 0,
-      percent: Math.round(((categoryStats[cat] || 0) / Math.max(1, mActual)) * 100),
+      percent: Math.round(((categoryStats[cat] || 0) / Math.max(1, mVariableTotal)) * 100),
       colorClass: ['bg-[#7047d7]','bg-blue-500','bg-emerald-400','bg-orange-400','bg-slate-300'][idx]
     }));
 
@@ -507,7 +507,7 @@
           </div>
           <div className="ios-card p-4">
             <div className="section-caption mb-2">총 지출</div>
-            <div className="text-[18px] font-black tracking-[-0.05em] money-text">{formatMoney(mFixed + mActual)}</div>
+            <div className="text-[18px] font-black tracking-[-0.05em] money-text">{formatMoney(mFixed + mVariableTotal)}</div>
             <div className="tiny-progress mt-3"><div style={{width:`${Math.min(100, ((mFixed + mActual) / Math.max(1, mIncome)) * 100)}%`, background:'linear-gradient(90deg,#ff8ea0,#ff647c)'}}></div></div>
           </div>
         </div>
