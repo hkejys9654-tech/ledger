@@ -1,0 +1,16 @@
+{
+  "name": "Garong's Ledger",
+  "short_name": "가계부",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#6D28D9",
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
