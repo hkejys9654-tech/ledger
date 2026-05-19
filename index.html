@@ -438,6 +438,23 @@
       colorClass: ['bg-[#7047d7]','bg-blue-500','bg-emerald-400','bg-orange-400','bg-slate-300'][idx]
     }));
 
+    const donutPalette = ['#7047d7', '#5d7df5', '#43c7a5', '#ffb15f', '#cbd5e1'];
+    let donutCursor = 0;
+    const donutSegments = categoryRows
+      .filter(row => row.amount > 0)
+      .map((row) => {
+        const start = donutCursor;
+        const end = donutCursor + (row.amount / Math.max(1, mVariableTotal)) * 100;
+        const color = donutPalette[CATEGORIES.indexOf(row.name)] || '#cbd5e1';
+        donutCursor = end;
+        return `${color} ${start}% ${end}%`;
+      });
+    const donutStyle = {
+      background: donutSegments.length > 0
+        ? `conic-gradient(${donutSegments.join(', ')})`
+        : 'conic-gradient(#ded9e8 0% 100%)'
+    };
+
     const handleExportExcel = () => {
       const wb = XLSX.utils.book_new();
       const summaryData = [
@@ -551,7 +568,7 @@
             <button onClick={() => setTab('ledger')} className="text-[11px] font-black text-[#7047d7] active:opacity-60">더보기 〉</button>
           </div>
           <div className="flex items-center gap-5">
-            <div className="donut flex-shrink-0"><div className="donut-center"><span className="text-[11px] text-slate-400">변동지출 합계</span><span>{formatMoney(mVariableTotal)}</span></div></div>
+            <div className="donut flex-shrink-0" style={donutStyle}><div className="donut-center"><span className="text-[11px] text-slate-400">변동지출 합계</span><span>{formatMoney(mVariableTotal)}</span></div></div>
             <div className="flex-1 space-y-2 min-w-0">
               {categoryRows.map((row) => (
                 <div key={row.name} className="flex items-center justify-between gap-2">
