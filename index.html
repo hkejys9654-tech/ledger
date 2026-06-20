@@ -1,3 +1,703 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#7047d7" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="가계부" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Garong's Ledger</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./icon.png" />
+  <link rel="apple-touch-icon" href="./icon.png" />
+
+  <style>
+    :root{
+      --app-bg:#f8f7fc;
+      --card:#fff;
+      --ink:#171420;
+      --sub:#8b8499;
+      --muted:#a39daf;
+      --line:#ede8f5;
+      --primary:#7047d7;
+      --primary-2:#8c6bf0;
+      --primary-soft:#f1ebff;
+      --dark:#21182f;
+      --red:#ef4444;
+      --pink:#ff647c;
+      --amber:#f59e0b;
+      --green:#10b981;
+      --blue:#4f74f5;
+    }
+    *{box-sizing:border-box;}
+    html{background:var(--app-bg);}
+    body{
+      margin:0;
+      padding:0;
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",Arial,sans-serif;
+      font-size:14px;
+      letter-spacing:-.035em;
+      background:
+        radial-gradient(circle at 14% -8%,rgba(112,71,215,.09),transparent 31%),
+        radial-gradient(circle at 95% 2%,rgba(140,107,240,.08),transparent 29%),
+        var(--app-bg);
+      -webkit-tap-highlight-color:transparent;
+    }
+    button,input,select,textarea{font-family:inherit;font-size:14px;}
+    button{border:0;cursor:pointer;}
+    input,select,textarea{outline:none;}
+    .app-shell{
+      width:100%;
+      max-width:430px;
+      min-height:100vh;
+      margin:0 auto;
+      position:relative;
+      overflow-x:hidden;
+      background:rgba(248,247,252,.96);
+      box-shadow:0 24px 80px rgba(41,31,66,.12);
+    }
+    .app-header{
+      position:sticky;
+      top:0;
+      z-index:50;
+      height:68px;
+      padding:12px 16px 8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(248,247,252,.88);
+      backdrop-filter:blur(22px);
+      border-bottom:1px solid rgba(229,224,240,.62);
+    }
+    .header-center{text-align:center;min-width:0;}
+    .app-title{font-size:15px;font-weight:900;line-height:1;color:#191622;}
+    .app-subtitle{font-size:11px;font-weight:800;color:var(--sub);line-height:1;margin-top:5px;}
+    .header-date-input{
+      appearance:none;
+      border:none;
+      background:transparent;
+      text-align:center;
+      padding:0;
+      max-width:126px;
+      font-size:15px;
+      font-weight:900;
+      color:#191622;
+    }
+    .app-main{padding:0 16px 112px;min-height:calc(100vh - 68px);}
+    .view{display:none;animation:fadeIn .18s ease-out forwards;}
+    .view.active{display:block;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+    .bottom-tabbar{
+      position:fixed;
+      left:50%;
+      bottom:12px;
+      transform:translateX(-50%);
+      z-index:80;
+      width:min(394px,calc(100% - 24px));
+      height:66px;
+      padding:7px 6px 6px;
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:2px;
+      background:rgba(255,255,255,.9);
+      backdrop-filter:blur(28px);
+      border:1px solid rgba(229,224,240,.85);
+      border-radius:26px;
+      box-shadow:0 16px 42px rgba(48,32,76,.15);
+    }
+    .tab-button{
+      position:relative;
+      border-radius:20px;
+      background:transparent;
+      color:#9b95a8;
+      font-size:10px;
+      font-weight:900;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:3px;
+      transition:.16s ease;
+    }
+    .tab-button.active{color:var(--primary);background:linear-gradient(180deg,#f2ecff,#fff);}
+    .tab-button.active:after{content:"";position:absolute;bottom:3px;width:17px;height:3px;border-radius:99px;background:var(--primary);opacity:.86;}
+    .tab-ico{width:19px;height:19px;display:flex;align-items:center;justify-content:center;}
+    .svg-ico{width:19px;height:19px;display:block;stroke:currentColor;fill:none;stroke-width:2.05;stroke-linecap:round;stroke-linejoin:round;}
+
+    .page-pad{padding-top:14px;display:flex;flex-direction:column;gap:14px;}
+    .card{
+      background:rgba(255,255,255,.95);
+      border:1px solid rgba(231,226,241,.9);
+      border-radius:22px;
+      box-shadow:0 12px 32px rgba(52,35,83,.065);
+    }
+    .glass-card{
+      color:white;
+      background:linear-gradient(135deg,rgba(112,71,215,.96),rgba(142,107,240,.9));
+      border:1px solid rgba(255,255,255,.32);
+      border-radius:24px;
+      box-shadow:0 18px 42px rgba(112,71,215,.22);
+    }
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .section-head{display:flex;align-items:center;gap:8px;min-width:0;}
+    .section-svg,.mini-svg{
+      flex:0 0 auto;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#f2ecff;
+      color:var(--primary);
+    }
+    .section-svg{width:28px;height:28px;border-radius:11px;}
+    .mini-svg{width:23px;height:23px;border-radius:9px;}
+    .section-svg .svg-ico{width:17px;height:17px;}
+    .mini-svg .svg-ico{width:15px;height:15px;}
+    .section-title{font-size:15px;font-weight:900;color:#272131;}
+    .section-caption{font-size:11px;font-weight:800;color:var(--sub);}
+    .money{font-weight:900;letter-spacing:-.045em;white-space:nowrap;}
+
+    .btn{
+      min-height:34px;
+      padding:9px 12px;
+      border-radius:14px;
+      background:#fff;
+      color:var(--primary);
+      border:1px solid #eee8ff;
+      box-shadow:0 7px 18px rgba(45,30,76,.045);
+      font-weight:900;
+    }
+    .btn:active{transform:scale(.985);}
+    .btn-primary{background:linear-gradient(90deg,var(--primary),var(--primary-2));color:#fff;border:0;}
+    .btn-soft{background:#f2ecff;color:var(--primary);}
+    .btn-gray{background:#f4f5f7;color:#64748b;border-color:#e5e7eb;}
+    .btn-red{background:#fee2e2;color:#dc2626;border-color:#fecaca;}
+    .field{
+      width:100%;
+      height:40px;
+      min-height:40px;
+      background:#fff;
+      border:1px solid #ebe7f3;
+      border-radius:14px;
+      padding:0 12px;
+      color:#302b3a;
+      font-size:14px;
+      font-weight:850;
+      box-shadow:0 6px 16px rgba(45,30,76,.035);
+    }
+    textarea.field{height:78px;min-height:78px;padding:12px;resize:vertical;line-height:1.45;}
+    .field:disabled{background:#fafbfc;color:#6b7280;opacity:1;}
+    .label{font-size:11px;font-weight:900;color:#98a6ba;margin:0 0 6px 3px;}
+    .sticky-panel{
+      position:sticky;
+      top:68px;
+      z-index:30;
+      margin:0 -16px;
+      padding:14px 16px;
+      background:rgba(248,247,252,.96);
+      border-bottom:1px solid #e9e5ef;
+      box-shadow:0 8px 16px rgba(52,35,83,.035);
+      backdrop-filter:blur(18px);
+    }
+
+    .tiny-progress{height:4px;background:#f0edf6;border-radius:99px;overflow:hidden;}
+    .tiny-progress>div{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--primary-2),var(--primary));}
+    .h-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:3px;scrollbar-width:none;}
+    .h-scroll::-webkit-scrollbar{display:none;}
+    .method-card{
+      width:70px;
+      flex:0 0 auto;
+      text-align:center;
+      background:#fbfaff;
+      border:1px solid #eee9f6;
+      border-radius:17px;
+      padding:10px 8px;
+      box-shadow:0 7px 18px rgba(52,35,83,.045);
+    }
+    .method-icon{
+      width:34px;height:34px;border-radius:13px;margin:0 auto 6px;
+      background:linear-gradient(135deg,#f5f0ff,#fff);color:var(--primary);
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:inset 0 0 0 1px rgba(112,71,215,.08);
+    }
+    .method-icon .svg-ico{width:18px;height:18px;}
+    .donut{width:96px;height:96px;border-radius:999px;background:conic-gradient(#ded9e8 0% 100%);position:relative;flex:0 0 auto;}
+    .donut:after{content:"";position:absolute;inset:21px;border-radius:999px;background:#fff;box-shadow:0 6px 16px rgba(55,35,85,.07);}
+    .donut-center{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;font-size:11px;font-weight:900;color:#2b2635;padding:24px;}
+
+    .pill{font-size:10px;line-height:1;padding:4px 7px;border-radius:9px;font-weight:900;white-space:nowrap;background:#f1f5f9;color:#475569;}
+    .pill-purple{background:#f1ebff;color:var(--primary);}
+    .pill-red{background:#fee2e2;color:#dc2626;}
+    .pill-amber{background:#fef3c7;color:#d97706;}
+    .pill-blue{background:#dbeafe;color:#2563eb;}
+    .pill-green{background:#d1fae5;color:#059669;}
+    .pill-orange{background:#ffedd5;color:#ea580c;}
+
+    .tx-card{
+      background:#fff;
+      border:1px solid #eee9f6;
+      border-radius:22px;
+      padding:14px 14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      box-shadow:0 12px 30px rgba(52,35,83,.07);
+    }
+    .tx-card:active{transform:scale(.988);}
+    .tx-main{flex:1;min-width:0;}
+    .tx-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px;}
+    .tx-title{font-size:14px;font-weight:900;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .tx-note{font-size:11px;color:#64748b;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .tx-method{font-size:11px;color:var(--primary);font-weight:900;margin-top:4px;}
+    .delete-btn{width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#cbd5e1;background:#f8fafc;}
+    .delete-btn .svg-ico{width:16px;height:16px;}
+
+    .fab{
+      position:fixed;
+      right:24px;
+      bottom:96px;
+      z-index:60;
+      width:58px;
+      height:58px;
+      border-radius:999px;
+      background:linear-gradient(90deg,var(--primary),var(--primary-2));
+      color:#fff;
+      box-shadow:0 20px 36px rgba(112,71,215,.28);
+      font-size:32px;
+      line-height:1;
+    }
+    .summary-dock{
+      position:fixed;
+      left:0;right:0;bottom:88px;
+      z-index:50;
+      max-width:430px;
+      margin:0 auto;
+      padding:0 24px;
+      pointer-events:none;
+    }
+    .summary-box{
+      pointer-events:auto;
+      background:rgba(33,24,47,.965);
+      color:white;
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:24px;
+      padding:15px 16px;
+      box-shadow:0 20px 44px rgba(20,15,30,.26);
+      backdrop-filter:blur(18px);
+    }
+
+    /* 변동지출 화면 전용: 목록과 합계를 같은 문서 흐름에 두어 서로 겹치지 않게 합니다. */
+    #view-ledger .sticky-panel{padding:10px 16px;}
+    #view-ledger .sticky-panel .field{height:34px;min-height:34px;border-radius:11px;padding:0 10px;font-size:12px;}
+    #view-ledger .sticky-panel .btn{min-height:30px;padding:6px 9px;border-radius:11px;font-size:11px;}
+    #view-ledger .page-pad{gap:9px;}
+    #view-ledger .tx-card{border-radius:17px;padding:10px 11px;gap:9px;}
+    #view-ledger .tx-meta{gap:4px;margin-bottom:3px;}
+    #view-ledger .tx-title{font-size:12px;}
+    #view-ledger .tx-note{margin-top:3px;font-size:10px;}
+    #view-ledger .tx-method{margin-top:3px;font-size:10px;}
+    #view-ledger .pill{padding:3px 5px;font-size:9px;}
+    #view-ledger .delete-btn{width:28px;height:28px;}
+    #view-ledger .delete-btn .svg-ico{width:14px;height:14px;}
+    #view-ledger .summary-box{padding:12px 13px;border-radius:18px;box-shadow:0 12px 28px rgba(20,15,30,.18);}
+    #view-ledger .summary-box .row{gap:8px;}
+    .summary-dock{
+      position:static;
+      left:auto;right:auto;bottom:auto;
+      z-index:auto;
+      max-width:none;
+      margin:0;
+      padding:0;
+      pointer-events:auto;
+    }
+
+    /* 변동지출 입력창도 목록과 같은 작은 밀도로 조정합니다. */
+    #txModal .modal-title{font-size:20px;}
+    #txModal .label{margin-bottom:4px;font-size:10px;}
+    #txModal .field{height:36px;min-height:36px;border-radius:12px;font-size:12px;}
+    #txModal textarea.field{height:68px;min-height:68px;padding:10px;}
+    #txModal .checkbox-card{min-height:40px;padding:8px 10px;border-radius:12px;font-size:12px;}
+    #txModal #txAmount{height:40px !important;min-height:40px !important;font-size:16px !important;}
+    #txModal button[type="submit"]{height:44px !important;font-size:14px !important;border-radius:14px !important;}
+
+    .modal{
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:120;
+      align-items:flex-end;
+      justify-content:center;
+      background:rgba(0,0,0,.56);
+      backdrop-filter:blur(6px);
+    }
+    .modal.active{display:flex;}
+    .modal-box{
+      width:100%;
+      max-width:480px;
+      max-height:92vh;
+      overflow:auto;
+      background:#fff;
+      border-radius:30px 30px 0 0;
+      padding:22px 22px calc(22px + env(safe-area-inset-bottom));
+      box-shadow:0 -22px 50px rgba(0,0,0,.18);
+    }
+    .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+    .modal-title{font-size:23px;font-weight:900;letter-spacing:-.055em;}
+    .x-btn{width:40px;height:40px;border-radius:50%;background:#f8fafc;color:#64748b;font-size:22px;}
+    .form-space{display:flex;flex-direction:column;gap:13px;}
+    .checkbox-card{
+      display:flex;align-items:center;gap:9px;
+      min-height:46px;
+      padding:11px 12px;
+      background:#f8fafc;
+      border:1px solid #e5e7eb;
+      border-radius:15px;
+      color:#334155;
+      font-size:14px;
+      font-weight:900;
+    }
+    input[type="checkbox"]{width:20px;height:20px;accent-color:var(--primary);}
+
+    .fixed-row{border-bottom:1px solid #f1f5f9;padding:8px 0;display:flex;flex-direction:column;gap:7px;}
+    .fixed-row:last-child{border-bottom:0;}
+    .fixed-title{font-size:13px;font-weight:900;color:#475569;display:flex;align-items:center;gap:7px;min-width:0;}
+    .fixed-title .label-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .income-line{display:grid;grid-template-columns:minmax(92px,1fr) 66px 108px;align-items:center;gap:7px;}
+    .income-line .field,.fixed-mini-grid .field,.mini-method{height:34px;min-height:34px;border-radius:12px;font-size:12px;padding:0 9px;box-shadow:0 5px 13px rgba(45,30,76,.028);}
+    .fixed-top{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:7px;align-items:center;}
+    .fixed-mini-grid{display:grid;grid-template-columns:66px 1fr 1fr;gap:7px;}
+    .group-title{
+      display:flex;align-items:center;gap:7px;
+      margin:14px 0 2px;
+      padding-top:12px;
+      border-top:1px solid #f1f5f9;
+      color:#7c6ea0;
+      font-size:11px;
+      font-weight:900;
+    }
+    .toast{
+      position:fixed;
+      left:50%;bottom:168px;
+      transform:translateX(-50%) translateY(14px);
+      z-index:200;
+      opacity:0;
+      pointer-events:none;
+      transition:.18s;
+      background:#111827;color:#fff;
+      padding:10px 14px;border-radius:999px;
+      font-size:12px;font-weight:900;
+    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .error-box{margin:24px 16px;padding:16px;border-radius:18px;background:#fff1f2;color:#be123c;border:1px solid #fecdd3;font-weight:800;line-height:1.6;}
+    @media (min-width:700px){.modal{align-items:center;padding:20px}.modal-box{border-radius:28px}.bottom-tabbar{bottom:18px}.app-shell{border-left:1px solid #ece8f4;border-right:1px solid #ece8f4}}
+  </style>
+</head>
+
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="header-center">
+        <input id="monthInput" type="month" class="header-date-input" />
+        <div id="headerTitle" class="app-title" style="display:none;">대시보드</div>
+        <div id="headerSub" class="app-subtitle">Garong's Ledger</div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div id="loading" style="height:70vh;display:flex;align-items:center;justify-content:center;color:#7047d7;font-weight:900;">앱 불러오는 중...</div>
+      <section id="view-dashboard" class="view"></section>
+      <section id="view-planner" class="view"></section>
+      <section id="view-ledger" class="view"></section>
+      <section id="view-filter" class="view"></section>
+      <section id="view-settings" class="view"></section>
+    </main>
+
+    <button id="fabAdd" class="fab" style="display:none;">+</button>
+
+    <nav class="bottom-tabbar">
+      <button class="tab-button active" data-tab="dashboard"><span class="tab-ico" data-nav-icon="home"></span><span>대시보드</span></button>
+      <button class="tab-button" data-tab="planner"><span class="tab-ico" data-nav-icon="wallet"></span><span>고정예산</span></button>
+      <button class="tab-button" data-tab="ledger"><span class="tab-ico" data-nav-icon="receipt"></span><span>변동지출</span></button>
+      <button class="tab-button" data-tab="filter"><span class="tab-ico" data-nav-icon="filter"></span><span>지출필터</span></button>
+      <button class="tab-button" data-tab="settings"><span class="tab-ico" data-nav-icon="settings"></span><span>시스템</span></button>
+    </nav>
+  </div>
+
+  <div id="txModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div id="txModalTitle" class="modal-title">기록하기</div>
+        <button class="x-btn" data-close-modal="txModal">×</button>
+      </div>
+      <form id="txForm" class="form-space">
+        <input type="hidden" id="txId" />
+        <div><div class="label">지출 일자</div><input id="txDate" type="date" class="field" required /></div>
+        <div class="grid-2">
+          <div><div class="label">카테고리</div><select id="txCategory" class="field"></select></div>
+          <div><div class="label">결제 수단</div><select id="txMethod" class="field"></select></div>
+        </div>
+        <div><div class="label">내용</div><input id="txDesc" type="text" class="field" placeholder="내용 입력" required /></div>
+        <div><div class="label">메모</div><textarea id="txMemo" class="field" placeholder="상세 메모"></textarea></div>
+        <div><div class="label">금액</div><input id="txAmount" type="text" inputmode="numeric" class="field" placeholder="0" required style="height:46px;font-size:18px;font-weight:900;color:#7047d7;text-align:right;" /></div>
+        <label class="checkbox-card">
+          <input id="txInstallment" type="checkbox" />
+          <span style="flex:1;">할부 결제</span>
+          <input id="txInstallmentMonths" type="number" min="1" max="36" value="1" class="field" style="display:none;width:70px;height:34px;min-height:34px;text-align:center;padding:0 8px;" />
+          <span id="txInstallmentLabel" style="display:none;font-size:12px;color:#64748b;">개월</span>
+        </label>
+        <div class="grid-2">
+          <label class="checkbox-card"><input id="txUnnecessary" type="checkbox" /><span>불필요한 지출</span></label>
+          <label class="checkbox-card"><input id="txUnexpected" type="checkbox" /><span>예상외 지출</span></label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="height:50px;font-size:16px;border-radius:18px;">저장하기</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="backupModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><div class="modal-title">데이터 백업</div><button class="x-btn" data-close-modal="backupModal">×</button></div>
+      <p style="color:#64748b;font-weight:800;line-height:1.5;font-size:13px;">아래 내용을 전부 복사해서 저장하세요.</p>
+      <textarea id="backupText" class="field" style="height:300px;font-family:monospace;font-size:12px;"></textarea>
+      <button id="copyBackupBtn" class="btn btn-primary" style="width:100%;margin-top:12px;height:46px;">전체 데이터 복사</button>
+    </div>
+  </div>
+
+  <div id="restoreModal" class="modal">
+    <div class="modal-box">
+      <div class="modal-head"><div class="modal-title">데이터 복구</div><button class="x-btn" data-close-modal="restoreModal">×</button></div>
+      <p style="color:#64748b;font-weight:800;line-height:1.5;font-size:13px;">백업 JSON 데이터를 아래에 붙여넣으세요.</p>
+      <textarea id="restoreText" class="field" style="height:300px;font-family:monospace;font-size:12px;"></textarea>
+      <div class="grid-2" style="margin-top:12px;"><button class="btn btn-gray" data-close-modal="restoreModal">취소</button><button id="restoreRunBtn" class="btn btn-primary">복구 실행</button></div>
+    </div>
+  </div>
+
+  <div id="deleteModal" class="modal">
+    <div class="modal-box" style="text-align:center;">
+      <div style="width:60px;height:60px;border-radius:50%;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;" data-icon="trash"></div>
+      <div class="modal-title">삭제 확인</div>
+      <p style="color:#64748b;font-weight:800;font-size:13px;">이 항목을 정말 삭제할까요?</p>
+      <div class="grid-2" style="margin-top:18px;"><button class="btn btn-gray" data-close-modal="deleteModal">취소</button><button id="deleteRunBtn" class="btn btn-red">삭제</button></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">완료</div>
+
+  <script>
+    "use strict";
+
+    window.addEventListener("error", function(event){
+      var loading = document.getElementById("loading");
+      if (loading && loading.style.display !== 'none') {
+        loading.innerHTML = '<div class="error-box">앱을 켜는 중 오류가 났습니다.<br><br>오류: ' + String(event.message || "알 수 없음") + '<br><br>이 화면을 캡처해서 보내줘.</div>';
+      }
+    });
+
+    const FIXED_LABELS = {
+      loanInterest:'대출이자', maintenance:'관리비', gas:'도시가스', commJiSeung:'통신비(지승)', commGaYoung:'통신비(가영)', commInternet:'인터넷',
+      insJiSeung:'보험(지승)', insGaEunSeon:'보험(가영,은우,선우)', insAll:'보험(지승,가영,은우,선우)', eduEunWoo:'은우 교육비', eduSeonWoo:'선우 교육비',
+      church:'교회회비', allowance:'용돈', savings:'적금'
+    };
+    const FIXED_ICON = {loanInterest:'bank',maintenance:'building',gas:'flame',commJiSeung:'phone',commGaYoung:'phone',commInternet:'globe',insJiSeung:'shield',insGaEunSeon:'shield',insAll:'shield',eduEunWoo:'book',eduSeonWoo:'book',church:'church',allowance:'cash',savings:'vault'};
+    const INCOME_LABELS = {main:'주수입', other:'기타수입', meal:'정액급식비', overtime:'초과수당'};
+    const PAYMENT_METHODS = ['롯데카드','현대카드','신한카드','광주카드','체크카드','현금'];
+    const CATEGORIES = ['식비','외식비','생활비','기타','기타현금지출'];
+    const METHOD_ICON = {'롯데카드':'card-heart','현대카드':'card-bold','신한카드':'card-lightning','광주카드':'card-wave','체크카드':'card-check','현금':'cash'};
+
+    const state = {
+      tab:'dashboard', selectedDate:getLocalDateStr(), currentMonth:'', allData:{transactions:[],monthSheets:[]}, monthSheet:null,
+      plannerEditing:false, plannerTemp:null, ledgerMode:'daily', ledgerSearch:'', filterType:'method', filterValue:'카드전체', filterStart:'', filterEnd:'', deleteTargetId:null
+    };
+    state.currentMonth = state.selectedDate.slice(0,7);
+
+    const DB_NAME = 'GarongLedger_v20_Final';
+    const DB_VERSION = 1;
+
+    const dbPromise = new Promise(function(resolve,reject){
+      if(!('indexedDB' in window)){reject(new Error('이 브라우저는 IndexedDB를 지원하지 않습니다.'));return;}
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = function(e){
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains('transactions')){
+          const store = db.createObjectStore('transactions',{keyPath:'id'});
+          store.createIndex('date','date');
+        }
+        if(!db.objectStoreNames.contains('monthSheets')) db.createObjectStore('monthSheets',{keyPath:'month'});
+      };
+      req.onsuccess = e => resolve(e.target.result);
+      req.onerror = () => reject(req.error || new Error('DB 열기 실패'));
+    });
+
+    const dbOps = {
+      getMonthSheet: async function(month){
+        const db = await dbPromise;
+        return new Promise(function(resolve,reject){
+          const tx = db.transaction('monthSheets','readonly');
+          const req = tx.objectStore('monthSheets').get(month);
+          req.onsuccess = () => resolve(normalizeSheet(req.result || createInitialMonthSheet(month), month));
+          req.onerror = () => reject(req.error);
+        });
+      },
+      saveMonthSheet: async function(sheet){
+        const db = await dbPromise;
+        return new Promise(function(resolve,reject){
+          const tx = db.transaction('monthSheets','readwrite');
+          tx.objectStore('monthSheets').put(normalizeSheet(sheet, sheet.month));
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+      },
+      getAllData: async function(){
+        const db = await dbPromise;
+        const transactions = await new Promise(function(resolve,reject){
+          const tx = db.transaction('transactions','readonly');
+          const req = tx.objectStore('transactions').getAll();
+          req.onsuccess = () => resolve(req.result || []); req.onerror = () => reject(req.error);
+        });
+        const monthSheets = await new Promise(function(resolve,reject){
+          const tx = db.transaction('monthSheets','readonly');
+          const req = tx.objectStore('monthSheets').getAll();
+          req.onsuccess = () => resolve((req.result || []).map(s => normalizeSheet(s, s.month))); req.onerror = () => reject(req.error);
+        });
+        return {transactions, monthSheets};
+      },
+      putTransaction: async function(data){
+        const db = await dbPromise;
+        return new Promise(function(resolve,reject){
+          const tx = db.transaction('transactions','readwrite');
+          tx.objectStore('transactions').put(data);
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+      },
+      deleteTransaction: async function(id){
+        const db = await dbPromise;
+        return new Promise(function(resolve,reject){
+          const tx = db.transaction('transactions','readwrite');
+          tx.objectStore('transactions').delete(id);
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+      },
+      restoreData: async function(data){
+        const db = await dbPromise;
+        return new Promise(function(resolve,reject){
+          const tx = db.transaction(['transactions','monthSheets'],'readwrite');
+          const txStore = tx.objectStore('transactions');
+          const sheetStore = tx.objectStore('monthSheets');
+          txStore.clear(); sheetStore.clear();
+          (data.transactions || []).forEach(t => txStore.put(t));
+          (data.monthSheets || []).forEach(s => sheetStore.put(normalizeSheet(s, s.month)));
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+      },
+      clearAll: async function(){
+        const db = await dbPromise;
+        return new Promise(function(resolve,reject){
+          const tx = db.transaction(['transactions','monthSheets'],'readwrite');
+          tx.objectStore('transactions').clear(); tx.objectStore('monthSheets').clear();
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+      }
+    };
+
+    function svgIcon(name, extraClass){
+      const cls = extraClass || 'svg-ico';
+      const icons = {
+        home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/>',
+        wallet:'<path d="M4 7.5h15a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4.5A2.5 2.5 0 0 1 2 17.5v-10A2.5 2.5 0 0 1 4.5 5H18"/><path d="M17 12h5v5h-5a2.5 2.5 0 0 1 0-5Z"/><path d="M18.5 14.5h.01"/>',
+        receipt:'<path d="M6 3h12v18l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2L6 21V3Z"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h4"/>',
+        filter:'<path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5Z"/>',
+        settings:'<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.9l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05a1.7 1.7 0 0 0-1.9-.35 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.07a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.9.35l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.07a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.35-1.9l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.07a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.9-.35l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.4 9c.21.62.8 1 1.55 1H21a2 2 0 1 1 0 4h-.07c-.75 0-1.34.38-1.53 1Z"/>',
+        card:'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+        'card-heart':'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/><path d="M12 15.8s-3-1.65-3-3.35c0-1.75 2.1-2.15 3-.7.9-1.45 3-.95 3 .7 0 1.7-3 3.35-3 3.35Z"/>',
+        'card-bold':'<path d="M6 6v12"/><path d="M18 6v12"/><path d="M8 12h8"/>',
+        'card-lightning':'<circle cx="12" cy="12" r="8"/><path d="m14 6-5 7h4l-3 5 6-7h-4l2-5Z"/>',
+        'card-wave':'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M7 14c2-2 4 2 6 0s4 2 6 0"/>',
+        'card-check':'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="m8 13 2.2 2.2L16 9.8"/>',
+        cash:'<rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="12" cy="12" r="2.4"/><path d="M6 10v.01"/><path d="M18 14v.01"/>',
+        bank:'<path d="M3 10 12 4l9 6"/><path d="M5 10h14"/><path d="M6 10v8"/><path d="M10 10v8"/><path d="M14 10v8"/><path d="M18 10v8"/><path d="M4 18h16"/>',
+        building:'<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 8h2a2 2 0 0 1 2 2v11"/><path d="M8 7h4"/><path d="M8 11h4"/><path d="M8 15h4"/>',
+        flame:'<path d="M12 22c4 0 7-2.8 7-6.8 0-3.2-1.8-5.5-4.4-7.6.1 2.2-.8 3.7-2.1 4.6.1-3-1.4-5.6-4.1-7.2.2 3.8-3.4 5.6-3.4 10.2C5 19.2 8 22 12 22Z"/>',
+        phone:'<path d="M7 3h10a1.5 1.5 0 0 1 1.5 1.5v15A1.5 1.5 0 0 1 17 21H7a1.5 1.5 0 0 1-1.5-1.5v-15A1.5 1.5 0 0 1 7 3Z"/><path d="M10 18h4"/>',
+        globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.2 2.4 3.2 5.4 3.2 9S14.2 18.6 12 21c-2.2-2.4-3.2-5.4-3.2-9S9.8 5.4 12 3Z"/>',
+        shield:'<path d="M12 22s7-3.4 7-10V5l-7-3-7 3v7c0 6.6 7 10 7 10Z"/><path d="m9 12 2 2 4-4"/>',
+        book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M8 7h8"/><path d="M8 11h6"/>',
+        church:'<path d="M12 3v5"/><path d="M9.5 5.5h5"/><path d="M5 21V11l7-4 7 4v10"/><path d="M9 21v-6a3 3 0 0 1 6 0v6"/>',
+        vault:'<rect x="4" y="7" width="16" height="12" rx="3"/><circle cx="12" cy="13" r="3"/><path d="M12 10v6"/><path d="M9 13h6"/><path d="M8 7V5h8v2"/>',
+        gift:'<path d="M4 10h16v11H4z"/><path d="M12 10v11"/><path d="M3 7h18v3H3z"/><path d="M12 7c-2.4 0-4-1.1-4-2.5C8 3.7 8.7 3 9.5 3 11 3 12 7 12 7Z"/><path d="M12 7s1-4 2.5-4c.8 0 1.5.7 1.5 1.5C16 5.9 14.4 7 12 7Z"/>',
+        meal:'<path d="M7 3v8"/><path d="M4.5 3v8"/><path d="M9.5 3v8"/><path d="M4.5 11h5L8 21H6l-1.5-10Z"/><path d="M16 3v18"/><path d="M16 3c3 2 4 5 2 8h-2"/>',
+        clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        pie:'<path d="M12 3v9h9"/><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5"/><path d="M14 3.2A9 9 0 0 1 20.8 10H14V3.2Z"/>',
+        download:'<path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
+        search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+        trash:'<path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M7 7l1 14h8l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/>'
+      };
+      return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.card}</svg>`;
+    }
+    function miniIcon(name){return `<span class="mini-svg">${svgIcon(name)}</span>`;}
+    function sectionIcon(name){return `<span class="section-svg">${svgIcon(name)}</span>`;}
+    function hydrateStaticIcons(){document.querySelectorAll('[data-nav-icon]').forEach(el => el.innerHTML = svgIcon(el.dataset.navIcon));document.querySelectorAll('[data-icon]').forEach(el => el.innerHTML = svgIcon(el.dataset.icon));}
+    function getLocalDateStr(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+    function addMonths(dateStr, months){const [y,m,d]=dateStr.split('-').map(Number);const date=new Date(y,m-1+months,d);if(date.getDate()!==d)date.setDate(0);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+    function formatMoney(n){return (Number(n)||0).toLocaleString('ko-KR')+'원';}
+    function cleanMoney(s){return Number(String(s||'').replace(/[^0-9]/g,''))||0;}
+    function esc(s){return String(s ?? '').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch]));}
+    function deepClone(obj){return JSON.parse(JSON.stringify(obj));}
+    function daysOptions(){return Array.from({length:31},(_,i)=>`<option value="${i+1}">${i+1}일</option>`).join('');}
+
+    function createInitialMonthSheet(month){
+      const incomes={}; Object.keys(INCOME_LABELS).forEach(k=>incomes[k]={amount:0,day:1}); incomes.additional=[];
+      const fixedExpenses={}; Object.keys(FIXED_LABELS).forEach(k=>fixedExpenses[k]={planned:0,actual:0,day:1,method:'현금'});
+      return {month,incomes,fixedExpenses};
+    }
+    function normalizeSheet(sheet, month){
+      const next = sheet || createInitialMonthSheet(month); next.month = next.month || month; next.incomes = next.incomes || {};
+      Object.keys(INCOME_LABELS).forEach(k=>{ if(!next.incomes[k]) next.incomes[k]={amount:0,day:1}; next.incomes[k].amount=Number(next.incomes[k].amount)||0; next.incomes[k].day=Number(next.incomes[k].day)||1; });
+      if(!Array.isArray(next.incomes.additional)) next.incomes.additional=[];
+      next.fixedExpenses = next.fixedExpenses || {};
+      Object.keys(FIXED_LABELS).forEach(k=>{ if(!next.fixedExpenses[k]) next.fixedExpenses[k]={planned:0,actual:0,day:1,method:'현금'}; const v=next.fixedExpenses[k]; v.planned=Number(v.planned)||0; v.actual=Number(v.actual)||0; v.day=Number(v.day)||1; v.method=v.method||'현금'; });
+      return next;
+    }
+    function getSheet(month){return state.allData.monthSheets.find(s=>s.month===month) || createInitialMonthSheet(month);}
+    async function loadData(){
+      try{
+        state.allData = await dbOps.getAllData();
+        state.monthSheet = await dbOps.getMonthSheet(state.currentMonth);
+        if(!state.plannerTemp || state.plannerTemp.month !== state.currentMonth) state.plannerTemp = deepClone(state.monthSheet);
+        document.getElementById('loading').style.display='none';
+        render();
+      }catch(err){
+        document.getElementById('loading').innerHTML = '<div class="error-box">데이터를 불러오지 못했습니다.<br><br>'+esc(err.message||err)+'<br><br>Safari 저장공간이나 시크릿 모드를 확인해줘.</div>';
+      }
+    }
+    function showToast(text){const el=document.getElementById('toast');el.textContent=text;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1600);}
+    function openModal(id){document.getElementById(id).classList.add('active');}
+    function closeModal(id){document.getElementById(id).classList.remove('active');}
+    function setTab(tab){state.tab=tab;window.scrollTo(0,0);render();}
+
+    function render(){
+      renderHeader(); renderTabs();
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      document.getElementById('view-'+state.tab).classList.add('active');
+      document.getElementById('fabAdd').style.display = state.tab === 'ledger' ? 'block' : 'none';
+      if(state.tab==='dashboard') renderDashboard();
+      if(state.tab==='planner') renderPlanner();
+      if(state.tab==='ledger') renderLedger();
+      if(state.tab==='filter') renderFilter();
+      if(state.tab==='settings') renderSettings();
+    }
+    function renderHeader(){
+      const monthInput=document.getElementById('monthInput'), title=document.getElementById('headerTitle'), sub=document.getElementById('headerSub');
+      monthInput.value=state.currentMonth;
+      if(state.tab==='dashboard' || state.tab==='planner'){
+        monthInput.style.display='inline-block'; title.style.display='none'; sub.textContent = state.tab==='planner'?'고정예산':"Garong's Ledger";
+      }else{
+        monthInput.style.display='none'; title.style.display='block'; title.textContent={ledger:'변동지출',filter:'지출필터',settings:'시스템'}[state.tab]||'가계부'; sub.textContent=state.currentMonth;
+      }
+    }
+    function renderTabs(){document.querySelectorAll('.tab-button').forEach(btn=>btn.classList.toggle('active', btn.dataset.tab===state.tab));}
     function getMonthStats(month){
       const sheet=getSheet(month); const txs=state.allData.transactions.filter(t=>t.date && t.date.startsWith(month));
       const income = Object.keys(INCOME_LABELS).reduce((sum,k)=>sum+(sheet.incomes[k]?.amount||0),0) + (sheet.incomes.additional||[]).reduce((sum,i)=>sum+(Number(i.amount)||0),0);
@@ -7,6 +707,7 @@
       const unexpected = txs.filter(t=>t.isUnexpected).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
       return {sheet,txs,income,fixed,variable,totalExpense:fixed+variable,balance:income-fixed-variable,unnecessary,unexpected};
     }
+
     function renderDashboard(){
       const el=document.getElementById('view-dashboard'); const s=getMonthStats(state.currentMonth); const maxTotal=Math.max(s.income,s.totalExpense,1);
       const methodStats={}; PAYMENT_METHODS.forEach(m=>{ const f=Object.values(s.sheet.fixedExpenses).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const tx=s.txs.filter(t=>t.paymentMethod===m).reduce((a,t)=>a+(Number(t.amount)||0),0); methodStats[m]=f+tx; });
@@ -44,6 +745,7 @@
         </div>`;
       document.getElementById('csvBtn').onclick=exportCsv; document.getElementById('goFilterBtn').onclick=()=>setTab('filter'); document.getElementById('goLedgerBtn').onclick=()=>setTab('ledger');
     }
+
     function renderPlanner(){
       const el=document.getElementById('view-planner'); const temp=state.plannerTemp || deepClone(state.monthSheet); const opt=daysOptions();
       const incomeSum=Object.keys(INCOME_LABELS).reduce((a,k)=>a+(temp.incomes[k]?.amount||0),0)+(temp.incomes.additional||[]).reduce((a,i)=>a+(Number(i.amount)||0),0);
@@ -77,6 +779,7 @@
         <div class="summary-dock"><div class="summary-box"><div class="grid-2" style="border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:11px;margin-bottom:11px;"><div><div style="font-size:10px;color:#94a3b8;font-weight:900;">전체 지출계획</div><div class="money" style="font-size:16px;">${formatMoney(grandPlanned)}</div></div><div style="text-align:right;"><div style="font-size:10px;color:#94a3b8;font-weight:900;">전체 실지출</div><div class="money" style="font-size:16px;">${formatMoney(grandActual)}</div></div></div><div class="row"><div style="font-size:11px;color:#c4b5fd;font-weight:900;">잔여 예산</div><div class="money" style="font-size:17px;color:${balance>=0?'#34d399':'#f87171'};">${balance>=0?'+':''}${formatMoney(balance)}</div></div></div></div>`;
       attachPlannerEvents(temp);
     }
+
     function attachPlannerEvents(temp){
       document.querySelectorAll('.planner-income-day').forEach(el=>{el.value=temp.incomes[el.dataset.key].day;el.onchange=()=>{temp.incomes[el.dataset.key].day=Number(el.value);};});
       document.querySelectorAll('.planner-income-amount').forEach(el=>{el.oninput=moneyInputHandler;el.onchange=()=>{temp.incomes[el.dataset.key].amount=cleanMoney(el.value);renderPlanner();};});
@@ -96,6 +799,7 @@
       const la=document.getElementById('loadPrevActualBtn'); if(la) la.onclick=()=>loadPrevMonthData('actual');
     }
     async function loadPrevMonthData(type){const prev=addMonths(state.currentMonth+'-01',-1).slice(0,7);const ps=await dbOps.getMonthSheet(prev);Object.keys(FIXED_LABELS).forEach(k=>{if(ps.fixedExpenses[k]){state.plannerTemp.fixedExpenses[k][type]=ps.fixedExpenses[k][type];state.plannerTemp.fixedExpenses[k].day=ps.fixedExpenses[k].day;state.plannerTemp.fixedExpenses[k].method=ps.fixedExpenses[k].method;}});renderPlanner();showToast('이전 달 자료를 가져왔어요');}
+
     function renderLedger(){
       const el=document.getElementById('view-ledger');
       const filtered=state.allData.transactions.filter(t=>state.ledgerMode==='daily'?t.date===state.selectedDate:(t.date&&t.date.startsWith(state.currentMonth))).filter(t=>{const q=state.ledgerSearch.trim();return !q || String(t.desc||'').includes(q)||String(t.category||'').includes(q)||String(t.memo||'').includes(q);}).sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -113,6 +817,7 @@
       return `<div class="tx-card" data-id="${esc(t.id)}" ${editable?'data-editable="1"':''}><div class="tx-main"><div class="tx-meta"><span style="font-size:10px;font-weight:900;color:#94a3b8;">${esc((t.date||'').slice(5))}</span><span class="pill ${catClass}">${esc(t.category||'')}</span>${t.isInstallment?'<span class="pill pill-purple">할부</span>':''}${t.isUnnecessary?'<span class="pill pill-red">불필요</span>':''}${t.isUnexpected?'<span class="pill pill-amber">예상외</span>':''}</div><div class="tx-title">${esc(t.desc||'')}</div>${t.memo?`<div class="tx-note">${esc(t.memo)}</div>`:''}<div class="tx-method">${esc(t.paymentMethod||'')}</div></div><div style="text-align:right;flex:0 0 auto;min-width:78px;"><div class="money" style="font-size:13px;">-${formatMoney(t.amount)}</div>${editable?`<button class="delete-btn" data-delete-id="${esc(t.id)}" style="margin-top:5px;">${svgIcon('trash')}</button>`:''}</div></div>`;
     }
     function attachTxCardEvents(){document.querySelectorAll('.tx-card[data-editable="1"]').forEach(card=>card.onclick=()=>{const tx=state.allData.transactions.find(t=>String(t.id)===String(card.dataset.id));if(tx)openTxModal(tx);});document.querySelectorAll('[data-delete-id]').forEach(btn=>btn.onclick=e=>{e.stopPropagation();state.deleteTargetId=btn.dataset.deleteId;openModal('deleteModal');});}
+
     function initFilterDatesIfNeeded(){if(state.filterStart&&state.filterEnd)return;const [y,m]=state.currentMonth.split('-').map(Number);const last=new Date(y,m,0).getDate();state.filterStart=`${state.currentMonth}-01`;state.filterEnd=`${state.currentMonth}-${String(last).padStart(2,'0')}`;}
     function getFilteredList(){
       const start=state.filterStart,end=state.filterEnd;if(!start||!end)return[];
@@ -134,6 +839,7 @@
       const typeEl=document.getElementById('filterType'); typeEl.value=state.filterType; typeEl.onchange=function(){state.filterType=this.value;if(state.filterType==='method'||state.filterType==='fixed_card')state.filterValue='카드전체';else if(state.filterType==='category')state.filterValue=CATEGORIES[0];else state.filterValue='';renderFilter();};
       const valueEl=document.getElementById('filterValue'); if(valueEl){valueEl.value=state.filterValue;valueEl.onchange=function(){state.filterValue=this.value;renderFilter();};}
     }
+
     function renderSettings(){
       const el=document.getElementById('view-settings');
       el.innerHTML = `<div class="page-pad" style="padding-top:24px;"><div class="card" style="padding:22px;"><div class="section-head" style="margin-bottom:18px;">${sectionIcon('settings')}<div class="section-title" style="font-size:18px;">데이터 관리</div></div><div style="display:flex;flex-direction:column;gap:11px;"><button id="backupBtn" class="btn btn-soft" style="width:100%;height:44px;text-align:left;display:flex;align-items:center;gap:9px;">${svgIcon('download')}<span>데이터 백업</span></button><button id="restoreBtn" class="btn btn-gray" style="width:100%;height:44px;text-align:left;display:flex;align-items:center;gap:9px;">${svgIcon('vault')}<span>데이터 복구</span></button><div style="height:1px;background:#f1f5f9;margin:4px 0;"></div><button id="resetBtn" class="btn btn-red" style="width:100%;height:44px;text-align:left;display:flex;align-items:center;gap:9px;">${svgIcon('trash')}<span>데이터 초기화</span></button></div></div><div style="text-align:center;color:#cbd5e1;font-size:11px;font-weight:900;letter-spacing:.06em;">Garong's Ledger Mini UI v23</div></div>`;
@@ -141,6 +847,7 @@
       document.getElementById('restoreBtn').onclick=()=>{document.getElementById('restoreText').value='';openModal('restoreModal');};
       document.getElementById('resetBtn').onclick=async()=>{if(confirm('모든 데이터를 삭제할까요?')){await dbOps.clearAll();await loadData();showToast('초기화 완료');}};
     }
+
     function openTxModal(tx){
       document.getElementById('txModalTitle').textContent=tx?'지출 수정':'기록하기'; document.getElementById('txId').value=tx?tx.id:''; document.getElementById('txDate').value=tx?tx.date:state.selectedDate;
       document.getElementById('txCategory').value=tx?tx.category:'식비'; document.getElementById('txMethod').value=tx?tx.paymentMethod:'체크카드'; document.getElementById('txDesc').value=tx?(tx.desc||''):''; document.getElementById('txMemo').value=tx?(tx.memo||''):'';
