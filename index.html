@@ -698,9 +698,13 @@
       }
     }
     function renderTabs(){document.querySelectorAll('.tab-button').forEach(btn=>btn.classList.toggle('active', btn.dataset.tab===state.tab));}
+    function getIncomeTotal(sheet){
+      const incomes=sheet?.incomes||{};
+      return Object.keys(INCOME_LABELS).reduce((sum,k)=>sum+(Number(incomes[k]?.amount)||0),0) + (incomes.additional||[]).reduce((sum,item)=>sum+(Number(item.amount)||0),0);
+    }
     function getMonthStats(month){
       const sheet=getSheet(month); const txs=state.allData.transactions.filter(t=>t.date && t.date.startsWith(month));
-      const income = Object.keys(INCOME_LABELS).reduce((sum,k)=>sum+(sheet.incomes[k]?.amount||0),0) + (sheet.incomes.additional||[]).reduce((sum,i)=>sum+(Number(i.amount)||0),0);
+      const income = getIncomeTotal(sheet);
       const fixed = Object.values(sheet.fixedExpenses).reduce((sum,v)=>sum+(Number(v.actual)||0),0);
       const variable = txs.reduce((sum,t)=>sum+(Number(t.amount)||0),0);
       const unnecessary = txs.filter(t=>t.isUnnecessary).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
@@ -748,7 +752,7 @@
 
     function renderPlanner(){
       const el=document.getElementById('view-planner'); const temp=state.plannerTemp || deepClone(state.monthSheet); const opt=daysOptions();
-      const incomeSum=Object.keys(INCOME_LABELS).reduce((a,k)=>a+(temp.incomes[k]?.amount||0),0)+(temp.incomes.additional||[]).reduce((a,i)=>a+(Number(i.amount)||0),0);
+      const incomeSum=getIncomeTotal(temp);
       const grandPlanned=Object.values(temp.fixedExpenses).reduce((a,v)=>a+(Number(v.planned)||0),0); const grandActual=Object.values(temp.fixedExpenses).reduce((a,v)=>a+(Number(v.actual)||0),0); const balance=grandPlanned-grandActual;
       const insuranceSum=['insJiSeung','insGaEunSeon','insAll'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0); const eduSum=['eduEunWoo','eduSeonWoo'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0);
       const editAttr=state.plannerEditing?'':'disabled';
@@ -763,7 +767,7 @@
             <div style="margin-top:14px;"><div class="row" style="margin-bottom:8px;"><div class="label" style="margin:0;">추가 수입 항목</div>${state.plannerEditing?`<button id="addIncomeBtn" class="btn btn-soft" style="font-size:11px;min-height:31px;padding:7px 10px;">+ 추가</button>`:''}</div>
               ${(temp.incomes.additional||[]).map(item=>`<div class="card" style="margin-bottom:7px;padding:10px;border-radius:16px;background:#fbfcfe;box-shadow:none;"><div class="row"><input class="field add-income-desc" data-id="${item.id}" value="${esc(item.desc||'')}" placeholder="수입 명칭" ${editAttr}/>${state.plannerEditing?`<button class="btn btn-red remove-income-btn" data-id="${item.id}" style="min-height:34px;padding:7px 10px;">－</button>`:''}</div><div class="income-line" style="grid-template-columns:1fr 66px 108px;margin-top:7px;"><span></span><select class="field add-income-day" data-id="${item.id}" ${editAttr}>${opt}</select><input class="field money-input add-income-amount" data-id="${item.id}" value="${item.amount?Number(item.amount).toLocaleString():''}" placeholder="0" inputmode="numeric" style="text-align:right;" ${editAttr}/></div></div>`).join('')}
             </div>
-            <div class="row" style="background:#f1ebff;border:1px solid #e6dcff;border-radius:15px;padding:12px 13px;margin-top:10px;"><span style="font-size:13px;font-weight:900;color:#7047d7;">수입 예산 총계</span><span class="money" style="font-size:17px;color:#5b21b6;">${formatMoney(incomeSum)}</span></div>
+            <div class="row" style="background:#f1ebff;border:1px solid #e6dcff;border-radius:15px;padding:12px 13px;margin-top:10px;"><span style="font-size:13px;font-weight:900;color:#7047d7;">수입 예산 총계</span><span id="plannerIncomeTotal" class="money" style="font-size:17px;color:#5b21b6;">${formatMoney(incomeSum)}</span></div>
           </div>
           <div class="card" style="padding:18px;">
             <div class="section-head" style="margin-bottom:12px;">${sectionIcon('receipt')}<div class="section-title" style="color:#7047d7;">고정 지출 내역</div></div>
@@ -782,14 +786,14 @@
 
     function attachPlannerEvents(temp){
       document.querySelectorAll('.planner-income-day').forEach(el=>{el.value=temp.incomes[el.dataset.key].day;el.onchange=()=>{temp.incomes[el.dataset.key].day=Number(el.value);};});
-      document.querySelectorAll('.planner-income-amount').forEach(el=>{el.oninput=moneyInputHandler;el.onchange=()=>{temp.incomes[el.dataset.key].amount=cleanMoney(el.value);renderPlanner();};});
+      document.querySelectorAll('.planner-income-amount').forEach(el=>{const sync=()=>{temp.incomes[el.dataset.key].amount=cleanMoney(el.value);updatePlannerIncomeTotal(temp);};el.oninput=e=>{moneyInputHandler(e);sync();};el.onchange=sync;});
       document.querySelectorAll('.planner-fixed-day').forEach(el=>{el.value=temp.fixedExpenses[el.dataset.key].day;el.onchange=()=>{temp.fixedExpenses[el.dataset.key].day=Number(el.value);};});
       document.querySelectorAll('.planner-fixed-method').forEach(el=>{el.value=temp.fixedExpenses[el.dataset.key].method;el.onchange=()=>{temp.fixedExpenses[el.dataset.key].method=el.value;};});
       document.querySelectorAll('.planner-fixed-planned').forEach(el=>{el.oninput=moneyInputHandler;el.onchange=()=>{temp.fixedExpenses[el.dataset.key].planned=cleanMoney(el.value);renderPlanner();};});
       document.querySelectorAll('.planner-fixed-actual').forEach(el=>{el.oninput=moneyInputHandler;el.onchange=()=>{temp.fixedExpenses[el.dataset.key].actual=cleanMoney(el.value);renderPlanner();};});
       document.querySelectorAll('.add-income-desc').forEach(el=>{el.onchange=()=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id));if(item)item.desc=el.value;};});
       document.querySelectorAll('.add-income-day').forEach(el=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id)); if(item)el.value=item.day; el.onchange=()=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.day=Number(el.value);};});
-      document.querySelectorAll('.add-income-amount').forEach(el=>{el.oninput=moneyInputHandler;el.onchange=()=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.amount=cleanMoney(el.value);renderPlanner();};});
+      document.querySelectorAll('.add-income-amount').forEach(el=>{const sync=()=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.amount=cleanMoney(el.value);updatePlannerIncomeTotal(temp);};el.oninput=e=>{moneyInputHandler(e);sync();};el.onchange=sync;});
       document.querySelectorAll('.remove-income-btn').forEach(btn=>btn.onclick=()=>{temp.incomes.additional=temp.incomes.additional.filter(i=>String(i.id)!==String(btn.dataset.id));renderPlanner();});
       const edit=document.getElementById('plannerEditBtn'); if(edit) edit.onclick=()=>{state.plannerEditing=true;state.plannerTemp=deepClone(state.monthSheet);renderPlanner();};
       const cancel=document.getElementById('plannerCancelBtn'); if(cancel) cancel.onclick=()=>{state.plannerEditing=false;state.plannerTemp=deepClone(state.monthSheet);renderPlanner();};
@@ -798,6 +802,7 @@
       const lp=document.getElementById('loadPrevPlannedBtn'); if(lp) lp.onclick=()=>loadPrevMonthData('planned');
       const la=document.getElementById('loadPrevActualBtn'); if(la) la.onclick=()=>loadPrevMonthData('actual');
     }
+    function updatePlannerIncomeTotal(sheet){const totalEl=document.getElementById('plannerIncomeTotal');if(totalEl)totalEl.textContent=formatMoney(getIncomeTotal(sheet));}
     async function loadPrevMonthData(type){const prev=addMonths(state.currentMonth+'-01',-1).slice(0,7);const ps=await dbOps.getMonthSheet(prev);Object.keys(FIXED_LABELS).forEach(k=>{if(ps.fixedExpenses[k]){state.plannerTemp.fixedExpenses[k][type]=ps.fixedExpenses[k][type];state.plannerTemp.fixedExpenses[k].day=ps.fixedExpenses[k].day;state.plannerTemp.fixedExpenses[k].method=ps.fixedExpenses[k].method;}});renderPlanner();showToast('이전 달 자료를 가져왔어요');}
 
     function renderLedger(){
