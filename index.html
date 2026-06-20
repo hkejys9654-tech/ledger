@@ -128,7 +128,18 @@
       border-radius:22px;
       position:relative;
     }
-    .tab-button .tab-ico{font-size:18px;line-height:1;}
+    .tab-button .tab-ico{width:22px;height:22px;display:flex;align-items:center;justify-content:center;line-height:1;}
+    .svg-ico{width:20px;height:20px;display:block;stroke:currentColor;fill:none;stroke-width:2.15;stroke-linecap:round;stroke-linejoin:round;}
+    .svg-ico.fill-soft{fill:currentColor;stroke:none;}
+    .section-head{display:flex;align-items:center;gap:9px;}
+    .section-head .section-svg{
+      width:30px;height:30px;border-radius:12px;background:#f1ebff;color:var(--primary);
+      display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+    }
+    .mini-svg{
+      width:24px;height:24px;border-radius:10px;background:#f6f2ff;color:#7047d7;
+      display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+    }
     .tab-button.active{
       color:var(--primary);
       background:linear-gradient(180deg,#f0eaff,#ffffff);
@@ -186,8 +197,8 @@
       width:100%;
       background:white;
       border:1px solid #ebe7f3;
-      border-radius:16px;
-      padding:12px 14px;
+      border-radius:15px;
+      padding:10px 12px;
       font-weight:800;
       color:#302b3a;
       box-shadow:0 8px 20px rgba(45,30,76,.04);
@@ -276,13 +287,15 @@
       width:40px;
       height:40px;
       border-radius:16px;
-      background:#f1ebff;
+      background:linear-gradient(135deg,#f5f0ff,#ffffff);
+      color:#7047d7;
       margin:0 auto 8px;
       display:flex;
       align-items:center;
       justify-content:center;
-      font-size:20px;
+      box-shadow:inset 0 0 0 1px rgba(112,71,215,.08);
     }
+    .method-icon .svg-ico{width:22px;height:22px;stroke-width:2.25;}
     .pill{
       font-size:10px;
       padding:3px 8px;
@@ -389,23 +402,29 @@
 
     .fixed-row{
       border-bottom:1px solid #f1f5f9;
-      padding:18px 0;
+      padding:11px 0;
       display:flex;
       flex-direction:column;
-      gap:12px;
+      gap:8px;
     }
     .fixed-row:last-child{border-bottom:0;}
-    .fixed-title{font-size:14px;font-weight:900;color:#475569;}
+    .fixed-title{font-size:13px;font-weight:900;color:#475569;display:flex;align-items:center;gap:8px;min-width:0;}
+    .fixed-title span.label-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .compact-money-grid{display:grid;grid-template-columns:82px 1fr 1fr;gap:8px;}
+    .compact-money-grid .field{padding:9px 8px;border-radius:13px;font-size:13px;}
+    .mini-method{width:108px!important;padding:8px!important;border-radius:13px!important;font-size:12px!important;}
     .group-title{
       font-size:11px;
       font-weight:900;
-      color:#94a3b8;
-      letter-spacing:.04em;
-      margin:22px 0 4px;
-      padding-top:18px;
+      color:#7c6ea0;
+      letter-spacing:.02em;
+      margin:16px 0 2px;
+      padding-top:14px;
       border-top:1px solid #f1f5f9;
+      display:flex;
+      align-items:center;
+      gap:8px;
     }
-
     .toast{
       position:fixed;
       left:50%;
@@ -469,11 +488,11 @@
     <button id="fabAdd" class="fab" style="display:none;">+</button>
 
     <nav class="bottom-tabbar">
-      <button class="tab-button active" data-tab="dashboard"><span class="tab-ico">🏠</span><span>대시보드</span></button>
-      <button class="tab-button" data-tab="planner"><span class="tab-ico">🐖</span><span>고정예산</span></button>
-      <button class="tab-button" data-tab="ledger"><span class="tab-ico">◐</span><span>변동지출</span></button>
-      <button class="tab-button" data-tab="filter"><span class="tab-ico">🔎</span><span>지출필터</span></button>
-      <button class="tab-button" data-tab="settings"><span class="tab-ico">⚙️</span><span>시스템</span></button>
+      <button class="tab-button active" data-tab="dashboard"><span class="tab-ico" data-nav-icon="home"></span><span>대시보드</span></button>
+      <button class="tab-button" data-tab="planner"><span class="tab-ico" data-nav-icon="wallet"></span><span>고정예산</span></button>
+      <button class="tab-button" data-tab="ledger"><span class="tab-ico" data-nav-icon="receipt"></span><span>변동지출</span></button>
+      <button class="tab-button" data-tab="filter"><span class="tab-ico" data-nav-icon="filter"></span><span>지출필터</span></button>
+      <button class="tab-button" data-tab="settings"><span class="tab-ico" data-nav-icon="settings"></span><span>시스템</span></button>
     </nav>
   </div>
 
@@ -555,7 +574,7 @@
 
   <div id="deleteModal" class="modal">
     <div class="modal-box" style="text-align:center;">
-      <div style="width:76px;height:76px;border-radius:50%;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:32px;">🗑️</div>
+      <div style="width:76px;height:76px;border-radius:50%;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">${svgIcon('trash','svg-ico')}</div>
       <div class="modal-title">삭제 확인</div>
       <p style="color:#64748b;font-weight:800;">이 항목을 정말 삭제할까요?</p>
       <div class="grid-2" style="margin-top:20px;">
@@ -578,27 +597,51 @@
     });
 
     const FIXED_LABELS = {
-      loanInterest: '🏦 대출이자',
-      maintenance: '🏢 관리비',
-      gas: '🔥 도시가스',
-      commJiSeung: '📱 통신비(지승)',
-      commGaYoung: '📱 통신비(가영)',
-      commInternet: '🌐 인터넷',
-      insJiSeung: '🛡️ 보험(지승)',
-      insGaEunSeon: '🛡️ 보험(가영,은우,선우)',
-      insAll: '🛡️ 보험(지승,가영,은우,선우)',
-      eduEunWoo: '🎓 은우 교육비',
-      eduSeonWoo: '🎓 선우 교육비',
-      church: '⛪ 교회회비',
-      allowance: '💸 용돈',
-      savings: '🐖 적금'
+      loanInterest: '대출이자',
+      maintenance: '관리비',
+      gas: '도시가스',
+      commJiSeung: '통신비(지승)',
+      commGaYoung: '통신비(가영)',
+      commInternet: '인터넷',
+      insJiSeung: '보험(지승)',
+      insGaEunSeon: '보험(가영,은우,선우)',
+      insAll: '보험(지승,가영,은우,선우)',
+      eduEunWoo: '은우 교육비',
+      eduSeonWoo: '선우 교육비',
+      church: '교회회비',
+      allowance: '용돈',
+      savings: '적금'
+    };
+
+    const FIXED_ICON = {
+      loanInterest: 'bank',
+      maintenance: 'building',
+      gas: 'flame',
+      commJiSeung: 'phone',
+      commGaYoung: 'phone',
+      commInternet: 'globe',
+      insJiSeung: 'shield',
+      insGaEunSeon: 'shield',
+      insAll: 'shield',
+      eduEunWoo: 'book',
+      eduSeonWoo: 'book',
+      church: 'church',
+      allowance: 'cash',
+      savings: 'vault'
     };
 
     const INCOME_LABELS = {
-      main: '💰 주수입',
-      other: '🎁 기타수입',
-      meal: '🍚 정액급식비',
-      overtime: '⏰ 초과수당'
+      main: '주수입',
+      other: '기타수입',
+      meal: '정액급식비',
+      overtime: '초과수당'
+    };
+
+    const INCOME_ICON = {
+      main: 'wallet',
+      other: 'gift',
+      meal: 'meal',
+      overtime: 'clock'
     };
 
     const PAYMENT_METHODS = ['롯데카드', '현대카드', '신한카드', '광주카드', '체크카드', '현금'];
@@ -606,12 +649,12 @@
     const CARD_METHODS = ['롯데카드', '현대카드', '신한카드', '광주카드', '체크카드'];
 
     const METHOD_ICON = {
-      '롯데카드':'💗',
-      '현대카드':'⬛',
-      '신한카드':'💙',
-      '광주카드':'🌊',
-      '체크카드':'✅',
-      '현금':'💵'
+      '롯데카드':'card-heart',
+      '현대카드':'card-bold',
+      '신한카드':'card-lightning',
+      '광주카드':'card-wave',
+      '체크카드':'card-check',
+      '현금':'cash'
     };
 
     const state = {
@@ -633,7 +676,7 @@
 
     state.currentMonth = state.selectedDate.slice(0, 7);
 
-    const DB_NAME = 'GarongLedger';
+    const DB_NAME = 'GarongLedger_v20_Final';
     const DB_VERSION = 1;
 
     const dbPromise = new Promise(function(resolve, reject){
@@ -742,6 +785,60 @@
         });
       }
     };
+
+
+    function svgIcon(name, extraClass){
+      const cls = extraClass || 'svg-ico';
+      const icons = {
+        home:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/>',
+        wallet:'<path d="M4 7.5h15a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H4.5A2.5 2.5 0 0 1 2 17.5v-10A2.5 2.5 0 0 1 4.5 5H18"/><path d="M17 12h5v5h-5a2.5 2.5 0 0 1 0-5Z"/><path d="M18.5 14.5h.01"/>',
+        receipt:'<path d="M6 3h12v18l-2-1.2-2 1.2-2-1.2-2 1.2-2-1.2L6 21V3Z"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h4"/>',
+        filter:'<path d="M4 5h16l-6.5 7.5V19l-3 1v-7.5L4 5Z"/>',
+        settings:'<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .35 1.9l.05.05a2 2 0 1 1-2.83 2.83l-.05-.05a1.7 1.7 0 0 0-1.9-.35 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.07a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.9.35l-.05.05a2 2 0 1 1-2.83-2.83l.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.07a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.35-1.9l-.05-.05a2 2 0 1 1 2.83-2.83l.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.07a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.9-.35l.05-.05a2 2 0 1 1 2.83 2.83l-.05.05A1.7 1.7 0 0 0 19.4 9c.21.62.8 1 1.55 1H21a2 2 0 1 1 0 4h-.07c-.75 0-1.34.38-1.53 1Z"/>',
+        card:'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+        'card-heart':'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18"/><path d="M12 15.8s-3-1.65-3-3.35c0-1.75 2.1-2.15 3-.7.9-1.45 3-.95 3 .7 0 1.7-3 3.35-3 3.35Z"/>',
+        'card-bold':'<path d="M6 6v12"/><path d="M18 6v12"/><path d="M8 12h8"/>',
+        'card-lightning':'<circle cx="12" cy="12" r="8"/><path d="m14 6-5 7h4l-3 5 6-7h-4l2-5Z"/>',
+        'card-wave':'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M7 14c2-2 4 2 6 0s4 2 6 0"/>',
+        'card-check':'<rect x="3" y="6" width="18" height="12" rx="3"/><path d="m8 13 2.2 2.2L16 9.8"/>',
+        cash:'<rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="12" cy="12" r="2.4"/><path d="M6 10v.01"/><path d="M18 14v.01"/>',
+        bank:'<path d="M3 10 12 4l9 6"/><path d="M5 10h14"/><path d="M6 10v8"/><path d="M10 10v8"/><path d="M14 10v8"/><path d="M18 10v8"/><path d="M4 18h16"/>',
+        building:'<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 8h2a2 2 0 0 1 2 2v11"/><path d="M8 7h4"/><path d="M8 11h4"/><path d="M8 15h4"/>',
+        flame:'<path d="M12 22c4 0 7-2.8 7-6.8 0-3.2-1.8-5.5-4.4-7.6.1 2.2-.8 3.7-2.1 4.6.1-3-1.4-5.6-4.1-7.2.2 3.8-3.4 5.6-3.4 10.2C5 19.2 8 22 12 22Z"/>',
+        phone:'<path d="M7 3h10a1.5 1.5 0 0 1 1.5 1.5v15A1.5 1.5 0 0 1 17 21H7a1.5 1.5 0 0 1-1.5-1.5v-15A1.5 1.5 0 0 1 7 3Z"/><path d="M10 18h4"/>',
+        globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.2 2.4 3.2 5.4 3.2 9S14.2 18.6 12 21c-2.2-2.4-3.2-5.4-3.2-9S9.8 5.4 12 3Z"/>',
+        shield:'<path d="M12 22s7-3.4 7-10V5l-7-3-7 3v7c0 6.6 7 10 7 10Z"/><path d="m9 12 2 2 4-4"/>',
+        book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M8 7h8"/><path d="M8 11h6"/>',
+        church:'<path d="M12 3v5"/><path d="M9.5 5.5h5"/><path d="M5 21V11l7-4 7 4v10"/><path d="M9 21v-6a3 3 0 0 1 6 0v6"/>',
+        vault:'<rect x="4" y="7" width="16" height="12" rx="3"/><circle cx="12" cy="13" r="3"/><path d="M12 10v6"/><path d="M9 13h6"/><path d="M8 7V5h8v2"/>',
+        gift:'<path d="M4 10h16v11H4z"/><path d="M12 10v11"/><path d="M3 7h18v3H3z"/><path d="M12 7c-2.4 0-4-1.1-4-2.5C8 3.7 8.7 3 9.5 3 11 3 12 7 12 7Z"/><path d="M12 7s1-4 2.5-4c.8 0 1.5.7 1.5 1.5C16 5.9 14.4 7 12 7Z"/>',
+        meal:'<path d="M7 3v8"/><path d="M4.5 3v8"/><path d="M9.5 3v8"/><path d="M4.5 11h5L8 21H6l-1.5-10Z"/><path d="M16 3v18"/><path d="M16 3c3 2 4 5 2 8h-2"/>',
+        clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+        chart:'<path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15v-4"/><path d="M12 15V8"/><path d="M16 15v-7"/>',
+        pie:'<path d="M12 3v9h9"/><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5"/><path d="M14 3.2A9 9 0 0 1 20.8 10H14V3.2Z"/>',
+        download:'<path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
+        search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+        trash:'<path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M7 7l1 14h8l1-14"/><path d="M10 11v6"/><path d="M14 11v6"/>',
+        close:'<path d="M6 6l12 12"/><path d="M18 6 6 18"/>',
+        alert:'<path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v5"/><path d="M12 17h.01"/>',
+        bolt:'<path d="m13 2-8 12h6l-1 8 8-12h-6l1-8Z"/>'
+      };
+      return `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.card}</svg>`;
+    }
+
+    function sectionIcon(name){
+      return `<span class="section-svg">${svgIcon(name)}</span>`;
+    }
+
+    function miniIcon(name){
+      return `<span class="mini-svg">${svgIcon(name)}</span>`;
+    }
+
+    function hydrateStaticIcons(){
+      document.querySelectorAll('[data-nav-icon]').forEach(function(el){
+        el.innerHTML = svgIcon(el.dataset.navIcon);
+      });
+    }
 
     function getLocalDateStr(){
       const d = new Date();
@@ -965,7 +1062,7 @@
                 <div style="color:rgba(255,255,255,.72);font-size:12px;font-weight:800;margin-top:12px;">수입 - 전체 지출</div>
                 <div style="color:rgba(255,255,255,.94);font-size:12px;font-weight:900;margin-top:4px;">${formatMoney(s.income)} - ${formatMoney(s.totalExpense)}</div>
               </div>
-              <button id="csvBtn" class="btn" style="background:rgba(255,255,255,.22);color:white;border-color:rgba(255,255,255,.18);width:48px;height:48px;padding:0;">⬇️</button>
+              <button id="csvBtn" class="btn" style="background:rgba(255,255,255,.22);color:white;border-color:rgba(255,255,255,.18);width:48px;height:48px;padding:0;display:flex;align-items:center;justify-content:center;">${svgIcon('download')}</button>
             </div>
           </div>
 
@@ -985,7 +1082,7 @@
           <div class="card" style="padding:20px;">
             <div class="row" style="margin-bottom:16px;">
               <div>
-                <div class="section-title">💳 결제수단별 지출</div>
+                <div class="section-head"><span class="section-svg">${svgIcon('card')}</span><div class="section-title">결제수단별 지출</div></div>
                 <div class="section-caption" style="margin-top:4px;">고정지출과 변동지출 합산</div>
               </div>
               <button class="btn btn-soft" id="goFilterBtn" style="font-size:11px;padding:9px 11px;">더보기</button>
@@ -996,7 +1093,7 @@
                 const percent = Math.round((amount / Math.max(1, s.totalExpense)) * 100);
                 return `
                   <div class="method-card">
-                    <div class="method-icon">${METHOD_ICON[m] || '💳'}</div>
+                    <div class="method-icon">${svgIcon(METHOD_ICON[m] || 'card')}</div>
                     <div style="font-size:11px;font-weight:900;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m}</div>
                     <div class="money" style="font-size:11px;margin-top:5px;">${formatMoney(amount)}</div>
                     <div style="font-size:11px;font-weight:900;color:#7047d7;margin-top:4px;">${percent}%</div>
@@ -1010,7 +1107,7 @@
           <div class="card" style="padding:20px;">
             <div class="row" style="margin-bottom:18px;">
               <div>
-                <div class="section-title">📊 변동지출 카테고리</div>
+                <div class="section-head"><span class="section-svg">${svgIcon('pie')}</span><div class="section-title">변동지출 카테고리</div></div>
                 <div class="section-caption" style="margin-top:4px;">월별 카테고리 흐름</div>
               </div>
               <button class="btn btn-soft" id="goLedgerBtn" style="font-size:11px;padding:9px 11px;">더보기</button>
@@ -1089,23 +1186,18 @@
         return `
           <div class="fixed-row">
             <div class="row">
-              <div style="min-width:0;flex:1;">
-                <div class="fixed-title">${FIXED_LABELS[k]}</div>
-                <select class="field planner-fixed-day" data-key="${k}" style="width:88px;padding:9px;margin-top:8px;" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
+              <div class="fixed-title">
+                ${miniIcon(FIXED_ICON[k] || 'receipt')}
+                <span class="label-text">${FIXED_LABELS[k]}</span>
               </div>
-              <select class="field planner-fixed-method" data-key="${k}" style="width:120px;padding:9px;" ${state.plannerEditing ? '' : 'disabled'}>
+              <select class="field planner-fixed-method mini-method" data-key="${k}" ${state.plannerEditing ? '' : 'disabled'}>
                 ${PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('')}
               </select>
             </div>
-            <div class="grid-2">
-              <div>
-                <div class="label">계획</div>
-                <input class="field money-input planner-fixed-planned" data-key="${k}" value="${v.planned ? v.planned.toLocaleString() : ''}" placeholder="0" style="text-align:right;background:#f4f0ff;" ${state.plannerEditing ? '' : 'disabled'} />
-              </div>
-              <div>
-                <div class="label">실제</div>
-                <input class="field money-input planner-fixed-actual" data-key="${k}" value="${v.actual ? v.actual.toLocaleString() : ''}" placeholder="0" style="text-align:right;background:#f8fafc;" ${state.plannerEditing ? '' : 'disabled'} />
-              </div>
+            <div class="compact-money-grid">
+              <select class="field planner-fixed-day" data-key="${k}" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
+              <input class="field money-input planner-fixed-planned" data-key="${k}" value="${v.planned ? v.planned.toLocaleString() : ''}" placeholder="계획" style="text-align:right;background:#f4f0ff;" ${state.plannerEditing ? '' : 'disabled'} />
+              <input class="field money-input planner-fixed-actual" data-key="${k}" value="${v.actual ? v.actual.toLocaleString() : ''}" placeholder="실제" style="text-align:right;background:#f8fafc;" ${state.plannerEditing ? '' : 'disabled'} />
             </div>
           </div>
         `;
@@ -1128,7 +1220,7 @@
 
         <div class="page-pad" style="padding-bottom:280px;">
           <div class="card" style="padding:22px;">
-            <div class="section-title" style="font-size:18px;color:#7047d7;margin-bottom:18px;">💰 수입 예산</div>
+            <div class="section-head" style="margin-bottom:14px;"><span class="section-svg">${svgIcon('wallet')}</span><div class="section-title" style="font-size:18px;color:#7047d7;">수입 예산</div></div>
             ${Object.keys(INCOME_LABELS).map(incomeRow).join('')}
 
             <div style="margin-top:18px;">
@@ -1161,7 +1253,7 @@
           </div>
 
           <div class="card" style="padding:22px;">
-            <div class="section-title" style="font-size:18px;color:#7047d7;margin-bottom:18px;">🧾 고정 지출 내역</div>
+            <div class="section-head" style="margin-bottom:14px;"><span class="section-svg">${svgIcon('receipt')}</span><div class="section-title" style="font-size:18px;color:#7047d7;">고정 지출 내역</div></div>
             ${state.plannerEditing ? `
               <div class="grid-2" style="margin-bottom:18px;">
                 <button id="loadPrevPlannedBtn" class="btn btn-soft" style="font-size:12px;">이전 달 계획</button>
@@ -1176,12 +1268,12 @@
             ${fixedRow('allowance')}
             ${fixedRow('savings')}
 
-            <div class="group-title">📱 통신비 그룹</div>
+            <div class="group-title">${miniIcon('phone')}<span>통신비 그룹</span></div>
             ${fixedRow('commJiSeung')}
             ${fixedRow('commGaYoung')}
             ${fixedRow('commInternet')}
 
-            <div class="group-title">🛡️ 보험료 그룹</div>
+            <div class="group-title">${miniIcon('shield')}<span>보험료 그룹</span></div>
             ${fixedRow('insJiSeung')}
             ${fixedRow('insGaEunSeon')}
             ${fixedRow('insAll')}
@@ -1189,7 +1281,7 @@
               <span>보험료 실지출 합계</span><span>${formatMoney(insuranceSum)}</span>
             </div>
 
-            <div class="group-title">🎓 교육비 그룹</div>
+            <div class="group-title">${miniIcon('book')}<span>교육비 그룹</span></div>
             ${fixedRow('eduEunWoo')}
             ${fixedRow('eduSeonWoo')}
             <div class="row" style="margin-top:12px;background:#ecfdf5;border-radius:18px;padding:16px;color:#047857;font-weight:900;">
@@ -1348,7 +1440,7 @@
         `;
       }).join('') : `
         <div style="text-align:center;padding:120px 0;color:#94a3b8;font-weight:800;">
-          <div style="font-size:54px;opacity:.28;margin-bottom:12px;">🧾</div>
+          <div style="width:58px;height:58px;margin:0 auto 12px;color:#cbd5e1;">${svgIcon('receipt','svg-ico')}</div>
           내역이 없습니다.
         </div>
       `;
@@ -1434,7 +1526,7 @@
           </div>
           <div style="text-align:right;flex:0 0 auto;min-width:104px;">
             <div class="money" style="font-size:16px;">-${formatMoney(t.amount)}</div>
-            ${editable ? `<button class="delete-btn" data-delete-id="${escapeHtml(t.id)}" style="margin-top:8px;">🗑️</button>` : ''}
+            ${editable ? `<button class="delete-btn" data-delete-id="${escapeHtml(t.id)}" style="margin-top:8px;display:inline-flex;align-items:center;justify-content:center;">${svgIcon('trash')}</button>` : ''}
           </div>
         </div>
       `;
@@ -1476,12 +1568,12 @@
             <div>
               <div class="label">필터 기준</div>
               <select id="filterType" class="field">
-                <option value="method">💳 결제 수단별</option>
-                <option value="category">📂 카테고리별</option>
-                <option value="fixed_card">🗂️ 카드 고정지출</option>
-                <option value="fixed_cash">💵 현금 고정지출</option>
-                <option value="unnecessary">⚠️ 불필요한 지출</option>
-                <option value="unexpected">⚡ 예상외 지출</option>
+                <option value="method">결제 수단별</option>
+                <option value="category">카테고리별</option>
+                <option value="fixed_card">카드 고정지출</option>
+                <option value="fixed_cash">현금 고정지출</option>
+                <option value="unnecessary">불필요한 지출</option>
+                <option value="unexpected">예상외 지출</option>
               </select>
             </div>
             ${['method','category','fixed_card'].includes(state.filterType) ? `
@@ -1491,7 +1583,7 @@
                   ${state.filterType === 'category'
                     ? `<optgroup label="변동지출 카테고리">${CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>
                        <optgroup label="고정지출 전체 항목">${Object.values(FIXED_LABELS).map(c => `<option value="${c}">${c}</option>`).join('')}</optgroup>`
-                    : `<option value="카드전체">💳 카드전체 (현금제외)</option>${PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('')}`}
+                    : `<option value="카드전체">카드전체 (현금제외)</option>${PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('')}`}
                 </select>
               </div>
             ` : ''}
@@ -1528,7 +1620,7 @@
             `;
           }).join('') : `
             <div style="text-align:center;padding:120px 0;color:#94a3b8;font-weight:800;">
-              <div style="font-size:54px;opacity:.28;margin-bottom:12px;">🔎</div>
+              <div style="width:58px;height:58px;margin:0 auto 12px;color:#cbd5e1;">${svgIcon('search','svg-ico')}</div>
               조건에 맞는 내역이 없습니다.
             </div>
           `}
@@ -1617,15 +1709,15 @@
       el.innerHTML = `
         <div class="page-pad" style="padding-top:30px;">
           <div class="card" style="padding:28px;">
-            <div class="section-title" style="font-size:20px;margin-bottom:22px;">⚙️ 데이터 관리</div>
+            <div class="section-head" style="margin-bottom:22px;"><span class="section-svg">${svgIcon('settings')}</span><div class="section-title" style="font-size:20px;">데이터 관리</div></div>
             <div style="display:flex;flex-direction:column;gap:14px;">
-              <button id="backupBtn" class="btn btn-soft" style="width:100%;padding:18px;text-align:left;">⬇️ 데이터 백업</button>
-              <button id="restoreBtn" class="btn btn-gray" style="width:100%;padding:18px;text-align:left;">⬆️ 데이터 복구</button>
+              <button id="backupBtn" class="btn btn-soft" style="width:100%;padding:16px;text-align:left;display:flex;align-items:center;gap:10px;">${svgIcon('download')}<span>데이터 백업</span></button>
+              <button id="restoreBtn" class="btn btn-gray" style="width:100%;padding:16px;text-align:left;display:flex;align-items:center;gap:10px;">${svgIcon('vault')}<span>데이터 복구</span></button>
               <div style="height:1px;background:#f1f5f9;margin:6px 0;"></div>
-              <button id="resetBtn" class="btn btn-red" style="width:100%;padding:18px;text-align:left;">🗑️ 데이터 초기화</button>
+              <button id="resetBtn" class="btn btn-red" style="width:100%;padding:16px;text-align:left;display:flex;align-items:center;gap:10px;">${svgIcon('trash')}<span>데이터 초기화</span></button>
             </div>
           </div>
-          <div style="text-align:center;color:#cbd5e1;font-size:12px;font-weight:900;letter-spacing:.08em;">Garong's Ledger Standalone v21</div>
+          <div style="text-align:center;color:#cbd5e1;font-size:12px;font-weight:900;letter-spacing:.08em;">Garong's Ledger Standalone v22 SVG</div>
         </div>
       `;
 
@@ -1777,6 +1869,7 @@
     }
 
     function initEvents(){
+      hydrateStaticIcons();
       fillSelects();
 
       document.getElementById('monthInput').onchange = async function(){
