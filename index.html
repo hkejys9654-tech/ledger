@@ -410,9 +410,9 @@
     .fixed-row:last-child{border-bottom:0;}
     .fixed-title{font-size:13px;font-weight:900;color:#475569;display:flex;align-items:center;gap:8px;min-width:0;}
     .fixed-title span.label-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .compact-money-grid{display:grid;grid-template-columns:82px 1fr 1fr;gap:8px;}
-        .compact-money-grid .field{padding:7px 8px!important;border-radius:12px!important;font-size:13px!important;height:36px!important;min-height:36px!important;}
-    .mini-method{width:98px!important;padding:7px 8px!important;border-radius:12px!important;font-size:12px!important;height:36px!important;min-height:36px!important;}
+    .compact-money-grid{display:grid;grid-template-columns:66px 1fr 1fr;gap:6px;}
+        .compact-money-grid .field{padding:0 7px!important;border-radius:11px!important;font-size:12px!important;height:34px!important;min-height:34px!important;max-height:34px!important;line-height:34px!important;}
+    .mini-method{width:88px!important;padding:0 8px!important;border-radius:11px!important;font-size:12px!important;height:34px!important;min-height:34px!important;line-height:34px!important;}
 
     .planner-income-row{
       padding:9px 0!important;
@@ -489,6 +489,81 @@
       font-weight:800;
       line-height:1.6;
       border:1px solid #fecdd3;
+    }
+
+
+    /* v24: 고정예산/수입예산 입력칸 강제 소형화 */
+    .planner-budget-line{
+      display:grid!important;
+      grid-template-columns:minmax(96px, 1fr) auto!important;
+      align-items:center!important;
+      gap:10px!important;
+      padding:10px 0!important;
+      border-bottom:1px solid #f1f5f9!important;
+    }
+    .planner-budget-line:last-child{border-bottom:0!important;}
+    .planner-budget-line .fixed-title{
+      font-size:14px!important;
+      line-height:1.2!important;
+      font-weight:900!important;
+      color:#475569!important;
+    }
+    .planner-budget-controls{
+      display:flex!important;
+      align-items:center!important;
+      justify-content:flex-end!important;
+      gap:7px!important;
+      min-width:0!important;
+    }
+    .planner-mini-field,
+    .planner-budget-controls .field{
+      -webkit-appearance:none!important;
+      appearance:none!important;
+      box-sizing:border-box!important;
+      height:34px!important;
+      min-height:34px!important;
+      max-height:34px!important;
+      line-height:34px!important;
+      padding:0 9px!important;
+      border-radius:11px!important;
+      font-size:13px!important;
+      font-weight:800!important;
+      box-shadow:0 4px 12px rgba(45,30,76,.035)!important;
+      margin:0!important;
+    }
+    .planner-day-field,
+    .planner-budget-controls select{
+      width:68px!important;
+      flex:0 0 68px!important;
+      text-align:center!important;
+      text-align-last:center!important;
+      background:#fff!important;
+    }
+    .planner-amount-field,
+    .planner-budget-controls input{
+      width:96px!important;
+      flex:0 0 96px!important;
+      text-align:right!important;
+      background:#fff!important;
+      color:#2f2a3a!important;
+    }
+    .planner-income-row{
+      padding:0!important;
+      gap:0!important;
+      border-bottom:0!important;
+    }
+    .planner-income-card-compact{
+      padding:16px!important;
+    }
+    .planner-income-card-compact .section-title{
+      font-size:17px!important;
+      margin-bottom:12px!important;
+    }
+    .planner-total-compact{
+      padding:12px 13px!important;
+      border-radius:15px!important;
+      margin-top:12px!important;
+      font-size:14px!important;
     }
 
     @media (min-width:700px){
@@ -1208,12 +1283,12 @@
       function incomeRow(k){
         const v = temp.incomes[k];
         return `
-          <div class="fixed-row planner-income-row">
-            <div class="row">
-              <div class="fixed-title">${INCOME_LABELS[k]}</div>
+          <div class="planner-budget-line planner-income-row">
+            <div class="fixed-title">${INCOME_LABELS[k]}</div>
+            <div class="planner-budget-controls">
               <select class="field planner-mini-field planner-day-field planner-income-day" data-key="${k}" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
+              <input type="text" inputmode="numeric" class="field money-input planner-mini-field planner-amount-field planner-income-amount" data-key="${k}" value="${v.amount ? v.amount.toLocaleString() : ''}" placeholder="0" ${state.plannerEditing ? '' : 'disabled'} />
             </div>
-            <input class="field money-input planner-mini-field planner-amount-field planner-income-amount" data-key="${k}" value="${v.amount ? v.amount.toLocaleString() : ''}" placeholder="0" ${state.plannerEditing ? '' : 'disabled'} />
           </div>
         `;
       }
@@ -1273,9 +1348,9 @@
                         <input class="field add-income-desc" data-id="${item.id}" value="${escapeHtml(item.desc || '')}" placeholder="수입 명칭" ${state.plannerEditing ? '' : 'disabled'} />
                         ${state.plannerEditing ? `<button class="btn btn-red remove-income-btn" data-id="${item.id}" style="padding:10px;">－</button>` : ''}
                       </div>
-                      <div class="row" style="margin-top:10px;">
+                      <div class="planner-budget-controls" style="margin-top:8px;">
                         <select class="field planner-mini-field planner-day-field add-income-day" data-id="${item.id}" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
-                        <input class="field money-input planner-mini-field planner-amount-field add-income-amount" data-id="${item.id}" value="${item.amount ? Number(item.amount).toLocaleString() : ''}" placeholder="0" ${state.plannerEditing ? '' : 'disabled'} />
+                        <input type="text" inputmode="numeric" class="field money-input planner-mini-field planner-amount-field add-income-amount" data-id="${item.id}" value="${item.amount ? Number(item.amount).toLocaleString() : ''}" placeholder="0" ${state.plannerEditing ? '' : 'disabled'} />
                       </div>
                     </div>
                   `;
