@@ -411,8 +411,45 @@
     .fixed-title{font-size:13px;font-weight:900;color:#475569;display:flex;align-items:center;gap:8px;min-width:0;}
     .fixed-title span.label-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .compact-money-grid{display:grid;grid-template-columns:82px 1fr 1fr;gap:8px;}
-    .compact-money-grid .field{padding:9px 8px;border-radius:13px;font-size:13px;}
-    .mini-method{width:108px!important;padding:8px!important;border-radius:13px!important;font-size:12px!important;}
+        .compact-money-grid .field{padding:7px 8px!important;border-radius:12px!important;font-size:13px!important;height:36px!important;min-height:36px!important;}
+    .mini-method{width:98px!important;padding:7px 8px!important;border-radius:12px!important;font-size:12px!important;height:36px!important;min-height:36px!important;}
+
+    .planner-income-row{
+      padding:9px 0!important;
+      gap:6px!important;
+    }
+    .planner-income-row .fixed-title{
+      font-size:13px!important;
+      font-weight:900!important;
+    }
+    .planner-mini-field{
+      height:36px!important;
+      min-height:36px!important;
+      padding:0 10px!important;
+      border-radius:12px!important;
+      font-size:13px!important;
+      font-weight:800!important;
+      box-shadow:0 5px 14px rgba(45,30,76,.035)!important;
+    }
+    .planner-day-field{
+      width:78px!important;
+      flex:0 0 78px!important;
+    }
+    .planner-amount-field{
+      width:112px!important;
+      flex:0 0 112px!important;
+      text-align:right!important;
+      margin-left:auto!important;
+    }
+    .planner-add-income-card{
+      padding:10px!important;
+      border-radius:18px!important;
+    }
+    .planner-total-compact{
+      padding:13px 14px!important;
+      border-radius:16px!important;
+      margin-top:12px!important;
+    }
     .group-title{
       font-size:11px;
       font-weight:900;
@@ -1171,12 +1208,12 @@
       function incomeRow(k){
         const v = temp.incomes[k];
         return `
-          <div class="fixed-row">
+          <div class="fixed-row planner-income-row">
             <div class="row">
               <div class="fixed-title">${INCOME_LABELS[k]}</div>
-              <select class="field planner-income-day" data-key="${k}" style="width:88px;padding:9px;" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
+              <select class="field planner-mini-field planner-day-field planner-income-day" data-key="${k}" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
             </div>
-            <input class="field money-input planner-income-amount" data-key="${k}" value="${v.amount ? v.amount.toLocaleString() : ''}" placeholder="0" style="text-align:right;width:55%;margin-left:auto;" ${state.plannerEditing ? '' : 'disabled'} />
+            <input class="field money-input planner-mini-field planner-amount-field planner-income-amount" data-key="${k}" value="${v.amount ? v.amount.toLocaleString() : ''}" placeholder="0" ${state.plannerEditing ? '' : 'disabled'} />
           </div>
         `;
       }
@@ -1231,14 +1268,14 @@
               <div id="additionalIncomeBox">
                 ${(temp.incomes.additional || []).map(function(item){
                   return `
-                    <div class="card" style="padding:14px;margin-bottom:10px;background:#f8fafc;">
+                    <div class="card planner-add-income-card" style="margin-bottom:8px;background:#f8fafc;">
                       <div class="row">
                         <input class="field add-income-desc" data-id="${item.id}" value="${escapeHtml(item.desc || '')}" placeholder="수입 명칭" ${state.plannerEditing ? '' : 'disabled'} />
                         ${state.plannerEditing ? `<button class="btn btn-red remove-income-btn" data-id="${item.id}" style="padding:10px;">－</button>` : ''}
                       </div>
                       <div class="row" style="margin-top:10px;">
-                        <select class="field add-income-day" data-id="${item.id}" style="width:88px;" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
-                        <input class="field money-input add-income-amount" data-id="${item.id}" value="${item.amount ? Number(item.amount).toLocaleString() : ''}" placeholder="0" style="text-align:right;width:55%;" ${state.plannerEditing ? '' : 'disabled'} />
+                        <select class="field planner-mini-field planner-day-field add-income-day" data-id="${item.id}" ${state.plannerEditing ? '' : 'disabled'}>${daysOptions}</select>
+                        <input class="field money-input planner-mini-field planner-amount-field add-income-amount" data-id="${item.id}" value="${item.amount ? Number(item.amount).toLocaleString() : ''}" placeholder="0" ${state.plannerEditing ? '' : 'disabled'} />
                       </div>
                     </div>
                   `;
@@ -1246,7 +1283,7 @@
               </div>
             </div>
 
-            <div class="row" style="margin-top:18px;background:#f1ebff;border:1px solid #e6dcff;border-radius:18px;padding:16px;">
+            <div class="row planner-total-compact" style="background:#f1ebff;border:1px solid #e6dcff;">
               <span style="font-size:13px;font-weight:900;color:#7047d7;">수입 예산 총계</span>
               <span class="money" style="color:#5b21b6;">${formatMoney(incomeSum)}</span>
             </div>
