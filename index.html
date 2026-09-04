@@ -389,8 +389,9 @@
     .fixed-row:last-child{border-bottom:0;}
     .fixed-title{font-size:13px;font-weight:900;color:#475569;display:flex;align-items:center;gap:7px;min-width:0;}
     .fixed-title .label-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .monthly-budget-line{display:grid;grid-template-columns:minmax(92px,1fr) minmax(132px,181px);align-items:center;gap:7px;}
     .income-line{display:grid;grid-template-columns:minmax(92px,1fr) 66px 108px;align-items:center;gap:7px;}
-    .income-line .field,.fixed-mini-grid .field,.mini-method{height:34px;min-height:34px;border-radius:12px;font-size:12px;padding:0 9px;box-shadow:0 5px 13px rgba(45,30,76,.028);}
+    .monthly-budget-line .field,.income-line .field,.fixed-mini-grid .field,.mini-method{height:34px;min-height:34px;border-radius:12px;font-size:12px;padding:0 9px;box-shadow:0 5px 13px rgba(45,30,76,.028);}
     .fixed-top{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:7px;align-items:center;}
     .fixed-mini-grid{display:grid;grid-template-columns:66px 1fr 1fr;gap:7px;}
     .group-title{
@@ -675,10 +676,11 @@
     function createInitialMonthSheet(month){
       const incomes={}; Object.keys(INCOME_LABELS).forEach(k=>incomes[k]={amount:0,day:1}); incomes.additional=[];
       const fixedExpenses={}; Object.keys(FIXED_LABELS).forEach(k=>fixedExpenses[k]={planned:0,actual:0,day:1,method:'현금'});
-      return {month,incomes,fixedExpenses};
+      return {month,monthlyBudget:0,incomes,fixedExpenses};
     }
     function normalizeSheet(sheet, month){
       const next = sheet || createInitialMonthSheet(month); next.month = next.month || month; next.incomes = next.incomes || {};
+      next.monthlyBudget = Number(next.monthlyBudget)||0;
       Object.keys(INCOME_LABELS).forEach(k=>{ if(!next.incomes[k]) next.incomes[k]={amount:0,day:1}; next.incomes[k].amount=Number(next.incomes[k].amount)||0; next.incomes[k].day=Number(next.incomes[k].day)||1; });
       if(!Array.isArray(next.incomes.additional)) next.incomes.additional=[];
       next.fixedExpenses = next.fixedExpenses || {};
@@ -739,10 +741,11 @@
       const sheet=getSheet(month); const txs=state.allData.transactions.filter(t=>t.date && t.date.startsWith(month));
       const income = getIncomeTotal(sheet);
       const fixedTotals=getFixedTotals(sheet); const fixed=fixedTotals.actual;
+      const monthlyBudget=Number(sheet.monthlyBudget)||0;
       const variable = txs.reduce((sum,t)=>sum+(Number(t.amount)||0),0);
       const unnecessary = txs.filter(t=>t.isUnnecessary).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
       const unexpected = txs.filter(t=>t.isUnexpected).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
-      return {sheet,txs,income,fixed,fixedPlanned:fixedTotals.planned,variable,totalExpense:fixed+variable,balance:income-fixed-variable,unnecessary,unexpected};
+      return {sheet,txs,income,fixed,fixedPlanned:fixedTotals.planned,monthlyBudget,monthlyBudgetBalance:monthlyBudget-variable,variable,totalExpense:fixed+variable,balance:income-fixed-variable,unnecessary,unexpected};
     }
 
     function renderDashboard(){
@@ -789,7 +792,7 @@
 
     function renderPlanner(){
       const el=document.getElementById('view-planner'); const temp=state.plannerTemp || deepClone(state.monthSheet); const opt=daysOptions();
-      const incomeSum=getIncomeTotal(temp); const fixedTotals=getFixedTotals(temp);
+      const monthlyBudget=Number(temp.monthlyBudget)||0; const incomeSum=getIncomeTotal(temp); const fixedTotals=getFixedTotals(temp);
       const grandPlanned=fixedTotals.planned; const grandActual=fixedTotals.actual; const balance=grandPlanned-grandActual;
       const insuranceSum=['insJiSeung','insGaEunSeon','insAll'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0); const eduSum=['eduEunWoo','eduSeonWoo'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0);
       const editAttr=state.plannerEditing?'':'disabled';
@@ -800,6 +803,7 @@
         <div class="page-pad" style="padding-bottom:230px;">
           <div class="card" style="padding:18px;">
             <div class="section-head" style="margin-bottom:12px;">${sectionIcon('wallet')}<div class="section-title" style="color:#7047d7;">수입 예산</div></div>
+            <div class="fixed-row"><div class="monthly-budget-line"><div class="fixed-title">한달 예산</div><input id="monthlyBudgetInput" class="field money-input" value="${monthlyBudget?monthlyBudget.toLocaleString():''}" placeholder="0" inputmode="numeric" style="text-align:right;background:#f7f3ff;" ${editAttr}/></div></div>
             ${Object.keys(INCOME_LABELS).map(incomeRow).join('')}
             <div style="margin-top:14px;"><div class="row" style="margin-bottom:8px;"><div class="label" style="margin:0;">추가 수입 항목</div>${state.plannerEditing?`<button id="addIncomeBtn" class="btn btn-soft" style="font-size:11px;min-height:31px;padding:7px 10px;">+ 추가</button>`:''}</div>
               ${(temp.incomes.additional||[]).map(item=>`<div class="card" style="margin-bottom:7px;padding:10px;border-radius:16px;background:#fbfcfe;box-shadow:none;"><div class="row"><input class="field add-income-desc" data-id="${item.id}" value="${esc(item.desc||'')}" placeholder="수입 명칭" ${editAttr}/>${state.plannerEditing?`<button class="btn btn-red remove-income-btn" data-id="${item.id}" style="min-height:34px;padding:7px 10px;">－</button>`:''}</div><div class="income-line" style="grid-template-columns:1fr 66px 108px;margin-top:7px;"><span></span><select class="field add-income-day" data-id="${item.id}" ${editAttr}>${opt}</select><input class="field money-input add-income-amount" data-id="${item.id}" value="${item.amount?Number(item.amount).toLocaleString():''}" placeholder="0" inputmode="numeric" style="text-align:right;" ${editAttr}/></div></div>`).join('')}
@@ -823,6 +827,7 @@
     }
 
     function attachPlannerEvents(temp){
+      const monthlyBudgetInput=document.getElementById('monthlyBudgetInput'); if(monthlyBudgetInput){monthlyBudgetInput.oninput=e=>{moneyInputHandler(e);temp.monthlyBudget=cleanMoney(monthlyBudgetInput.value);};monthlyBudgetInput.onchange=()=>{temp.monthlyBudget=cleanMoney(monthlyBudgetInput.value);};}
       document.querySelectorAll('.planner-income-day').forEach(el=>{el.value=temp.incomes[el.dataset.key].day;el.onchange=()=>{temp.incomes[el.dataset.key].day=Number(el.value);};});
       document.querySelectorAll('.planner-income-amount').forEach(el=>{const sync=()=>{temp.incomes[el.dataset.key].amount=cleanMoney(el.value);updatePlannerIncomeTotal(temp);};el.oninput=e=>{moneyInputHandler(e);sync();};el.onchange=sync;});
       document.querySelectorAll('.planner-fixed-day').forEach(el=>{el.value=temp.fixedExpenses[el.dataset.key].day;el.onchange=()=>{temp.fixedExpenses[el.dataset.key].day=Number(el.value);};});
@@ -850,16 +855,17 @@
       setText('plannerInsuranceActual',formatMoney(['insJiSeung','insGaEunSeon','insAll'].reduce((sum,key)=>sum+(Number(sheet.fixedExpenses[key]?.actual)||0),0)));
       setText('plannerEducationActual',formatMoney(['eduEunWoo','eduSeonWoo'].reduce((sum,key)=>sum+(Number(sheet.fixedExpenses[key]?.actual)||0),0)));
     }
-    async function loadPrevMonthData(type){const prev=addMonths(state.currentMonth+'-01',-1).slice(0,7);const ps=await dbOps.getMonthSheet(prev);Object.keys(FIXED_LABELS).forEach(k=>{if(ps.fixedExpenses[k]){state.plannerTemp.fixedExpenses[k][type]=ps.fixedExpenses[k][type];state.plannerTemp.fixedExpenses[k].day=ps.fixedExpenses[k].day;state.plannerTemp.fixedExpenses[k].method=ps.fixedExpenses[k].method;}});renderPlanner();showToast('이전 달 자료를 가져왔어요');}
+    async function loadPrevMonthData(type){const prev=addMonths(state.currentMonth+'-01',-1).slice(0,7);const ps=await dbOps.getMonthSheet(prev);if(type==='planned')state.plannerTemp.monthlyBudget=Number(ps.monthlyBudget)||0;Object.keys(FIXED_LABELS).forEach(k=>{if(ps.fixedExpenses[k]){state.plannerTemp.fixedExpenses[k][type]=ps.fixedExpenses[k][type];state.plannerTemp.fixedExpenses[k].day=ps.fixedExpenses[k].day;state.plannerTemp.fixedExpenses[k].method=ps.fixedExpenses[k].method;}});renderPlanner();showToast('이전 달 자료를 가져왔어요');}
 
     function renderLedger(){
       const el=document.getElementById('view-ledger');
       const filtered=state.allData.transactions.filter(t=>state.ledgerMode==='daily'?t.date===state.selectedDate:(t.date&&t.date.startsWith(state.currentMonth))).filter(t=>{const q=state.ledgerSearch.trim();return !q || String(t.desc||'').includes(q)||String(t.category||'').includes(q)||String(t.memo||'').includes(q);}).sort((a,b)=>new Date(b.date)-new Date(a.date));
       const total=filtered.reduce((a,t)=>a+(Number(t.amount)||0),0); const unnecessary=filtered.filter(t=>t.isUnnecessary).reduce((a,t)=>a+(Number(t.amount)||0),0); const unexpected=filtered.filter(t=>t.isUnexpected).reduce((a,t)=>a+(Number(t.amount)||0),0);
+      const monthStats=getMonthStats(state.currentMonth); const budgetBalance=monthStats.monthlyBudgetBalance; const budgetBalanceColor=budgetBalance>=0?'#34d399':'#fb7185';
       let lastDate=''; const listHtml=filtered.length?filtered.map(t=>{const head=state.ledgerMode==='monthly'&&t.date!==lastDate; lastDate=t.date; return `${head?`<div style="display:flex;align-items:center;gap:10px;padding:14px 3px 4px;"><span style="font-size:12px;font-weight:900;color:#94a3b8;">${t.date.slice(5)}</span><div style="height:1px;flex:1;background:#e2e8f0;"></div></div>`:''}${txCardHtml(t,true)}`;}).join(''):`<div style="text-align:center;padding:100px 0;color:#94a3b8;font-weight:800;"><div style="width:48px;height:48px;margin:0 auto 12px;color:#cbd5e1;">${svgIcon('receipt','svg-ico')}</div>내역이 없습니다.</div>`;
       el.innerHTML = `
         <div class="sticky-panel"><div style="display:flex;background:#e9e7ef;padding:6px;border-radius:17px;margin-bottom:12px;"><button id="dailyBtn" class="btn ${state.ledgerMode==='daily'?'':'btn-gray'}" style="flex:1;box-shadow:none;">일별 내역</button><button id="monthlyBtn" class="btn ${state.ledgerMode==='monthly'?'':'btn-gray'}" style="flex:1;box-shadow:none;">월별 전체</button></div><div style="display:flex;flex-direction:column;gap:9px;">${state.ledgerMode==='daily'?`<div><div class="label">조회 날짜 선택</div><input id="ledgerDateInput" type="date" class="field" value="${state.selectedDate}" /></div>`:''}<input id="ledgerSearchInput" class="field" placeholder="검색어 입력..." value="${esc(state.ledgerSearch)}" /></div></div>
-        <div class="page-pad" style="padding-bottom:118px;"><div class="summary-dock"><div class="summary-box"><div class="row"><div><div style="font-size:9px;color:#94a3b8;font-weight:900;">변동지출 합계</div><div class="money" style="font-size:16px;">${formatMoney(total)}</div></div><div style="text-align:right;"><div style="font-size:9px;color:#fb7185;font-weight:900;">불필요한 지출</div><div class="money" style="font-size:13px;color:#fb7185;">${formatMoney(unnecessary)}</div></div></div><div style="height:1px;background:rgba(255,255,255,.08);margin:8px 0;"></div><div style="text-align:right;"><div style="font-size:9px;color:#fbbf24;font-weight:900;">예상외 지출</div><div class="money" style="font-size:13px;color:#fbbf24;">${formatMoney(unexpected)}</div></div></div></div>${listHtml}</div>`;
+        <div class="page-pad" style="padding-bottom:118px;"><div class="summary-dock"><div class="summary-box"><div class="row"><div><div style="font-size:9px;color:#94a3b8;font-weight:900;">변동지출 합계</div><div class="money" style="font-size:16px;">${formatMoney(total)}</div></div><div style="text-align:right;"><div style="font-size:9px;color:#fb7185;font-weight:900;">불필요한 지출</div><div class="money" style="font-size:13px;color:#fb7185;">${formatMoney(unnecessary)}</div></div></div><div style="height:1px;background:rgba(255,255,255,.08);margin:8px 0;"></div><div class="row"><div><div style="font-size:9px;color:#c4b5fd;font-weight:900;">한달예산 잔액</div><div class="money" style="font-size:13px;color:${budgetBalanceColor};">${formatMoney(budgetBalance)}</div></div><div style="text-align:right;"><div style="font-size:9px;color:#fbbf24;font-weight:900;">예상외 지출</div><div class="money" style="font-size:13px;color:#fbbf24;">${formatMoney(unexpected)}</div></div></div></div></div>${listHtml}</div>`;
       document.getElementById('dailyBtn').onclick=()=>{state.ledgerMode='daily';renderLedger();}; document.getElementById('monthlyBtn').onclick=()=>{state.ledgerMode='monthly';renderLedger();};
       const dateInput=document.getElementById('ledgerDateInput'); if(dateInput) dateInput.onchange=()=>{state.selectedDate=dateInput.value;state.currentMonth=state.selectedDate.slice(0,7);loadData();};
       document.getElementById('ledgerSearchInput').oninput=function(){state.ledgerSearch=this.value;renderLedger();}; attachTxCardEvents();
@@ -924,6 +930,7 @@
     function moneyInputHandler(e){const raw=String(e.target.value).replace(/[^0-9]/g,'');e.target.value=raw?Number(raw).toLocaleString():'';}
     function exportCsv(){
       const s=getMonthStats(state.currentMonth); const rows=[['구분','날짜','카테고리','결제수단','내용','계획금액','실제금액','메모']];
+      if(s.monthlyBudget>0) rows.push(['월예산','','변동지출','','한달 예산',s.monthlyBudget,'','']);
       Object.entries(s.sheet.fixedExpenses).forEach(([k,v])=>{if((Number(v.planned)||0)>0||(Number(v.actual)||0)>0)rows.push(['고정지출',`${s.sheet.month}-${String(v.day||1).padStart(2,'0')}`,'고정지출',v.method,FIXED_LABELS[k],v.planned||0,v.actual||0,'']);});
       s.txs.sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>rows.push(['변동지출',t.date,t.category,t.paymentMethod,t.desc,'',t.amount,t.memo||'']));
       const csv='\ufeff'+rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`가계부_${state.currentMonth}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},0);
