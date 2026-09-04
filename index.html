@@ -328,6 +328,9 @@
     #view-ledger input[type="date"]::-webkit-calendar-picker-indicator,#view-filter input[type="date"]::-webkit-calendar-picker-indicator{margin:0;opacity:.55;}
     #view-ledger .summary-box{padding:12px 13px;border-radius:18px;box-shadow:0 12px 28px rgba(20,15,30,.18);}
     #view-ledger .summary-box .row{gap:8px;}
+    .ledger-budget-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+    .ledger-budget-toggle{display:inline-flex;align-items:center;gap:4px;color:#c4b5fd;font-size:9px;font-weight:900;white-space:nowrap;}
+    .ledger-budget-toggle input{width:14px;height:14px;min-width:14px;accent-color:var(--primary);}
     #view-ledger .summary-dock{
       position:static;
       left:auto;right:auto;bottom:auto;
@@ -536,7 +539,7 @@
 
     const state = {
       tab:'dashboard', selectedDate:getLocalDateStr(), currentMonth:'', allData:{transactions:[],monthSheets:[]}, monthSheet:null,
-      plannerEditing:false, plannerTemp:null, ledgerMode:'daily', ledgerSearch:'', filterType:'method', filterValue:FILTER_CARD_ALL, filterStart:'', filterEnd:'', deleteTargetId:null
+      plannerEditing:false, plannerTemp:null, ledgerMode:'daily', ledgerSearch:'', ledgerBudgetExcludeInstallment:false, filterType:'method', filterValue:FILTER_CARD_ALL, filterStart:'', filterEnd:'', deleteTargetId:null
     };
     state.currentMonth = state.selectedDate.slice(0,7);
 
@@ -737,15 +740,16 @@
         return totals;
       },{planned:0,actual:0});
     }
-    function getMonthStats(month){
+    function getMonthStats(month, excludeInstallmentBudget=false){
       const sheet=getSheet(month); const txs=state.allData.transactions.filter(t=>t.date && t.date.startsWith(month));
       const income = getIncomeTotal(sheet);
       const fixedTotals=getFixedTotals(sheet); const fixed=fixedTotals.actual;
       const monthlyBudget=Number(sheet.monthlyBudget)||0;
       const variable = txs.reduce((sum,t)=>sum+(Number(t.amount)||0),0);
+      const budgetVariable = excludeInstallmentBudget ? txs.filter(t=>!t.isInstallment).reduce((sum,t)=>sum+(Number(t.amount)||0),0) : variable;
       const unnecessary = txs.filter(t=>t.isUnnecessary).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
       const unexpected = txs.filter(t=>t.isUnexpected).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
-      return {sheet,txs,income,fixed,fixedPlanned:fixedTotals.planned,monthlyBudget,monthlyBudgetBalance:monthlyBudget>0?monthlyBudget-variable:0,variable,totalExpense:fixed+variable,balance:income-fixed-variable,unnecessary,unexpected};
+      return {sheet,txs,income,fixed,fixedPlanned:fixedTotals.planned,monthlyBudget,monthlyBudgetBalance:monthlyBudget>0?monthlyBudget-budgetVariable:0,budgetVariable,variable,totalExpense:fixed+variable,balance:income-fixed-variable,unnecessary,unexpected};
     }
 
     function renderDashboard(){
@@ -861,13 +865,14 @@
       const el=document.getElementById('view-ledger');
       const filtered=state.allData.transactions.filter(t=>state.ledgerMode==='daily'?t.date===state.selectedDate:(t.date&&t.date.startsWith(state.currentMonth))).filter(t=>{const q=state.ledgerSearch.trim();return !q || String(t.desc||'').includes(q)||String(t.category||'').includes(q)||String(t.memo||'').includes(q);}).sort((a,b)=>new Date(b.date)-new Date(a.date));
       const total=filtered.reduce((a,t)=>a+(Number(t.amount)||0),0); const unnecessary=filtered.filter(t=>t.isUnnecessary).reduce((a,t)=>a+(Number(t.amount)||0),0); const unexpected=filtered.filter(t=>t.isUnexpected).reduce((a,t)=>a+(Number(t.amount)||0),0);
-      const monthStats=getMonthStats(state.currentMonth); const budgetBalance=monthStats.monthlyBudgetBalance; const budgetBalanceColor=budgetBalance>=0?'#34d399':'#fb7185';
+      const monthStats=getMonthStats(state.currentMonth,state.ledgerBudgetExcludeInstallment); const budgetBalance=monthStats.monthlyBudgetBalance; const budgetBalanceColor=budgetBalance>=0?'#34d399':'#fb7185';
       let lastDate=''; const listHtml=filtered.length?filtered.map(t=>{const head=state.ledgerMode==='monthly'&&t.date!==lastDate; lastDate=t.date; return `${head?`<div style="display:flex;align-items:center;gap:10px;padding:14px 3px 4px;"><span style="font-size:12px;font-weight:900;color:#94a3b8;">${t.date.slice(5)}</span><div style="height:1px;flex:1;background:#e2e8f0;"></div></div>`:''}${txCardHtml(t,true)}`;}).join(''):`<div style="text-align:center;padding:100px 0;color:#94a3b8;font-weight:800;"><div style="width:48px;height:48px;margin:0 auto 12px;color:#cbd5e1;">${svgIcon('receipt','svg-ico')}</div>내역이 없습니다.</div>`;
       el.innerHTML = `
         <div class="sticky-panel"><div style="display:flex;background:#e9e7ef;padding:6px;border-radius:17px;margin-bottom:12px;"><button id="dailyBtn" class="btn ${state.ledgerMode==='daily'?'':'btn-gray'}" style="flex:1;box-shadow:none;">일별 내역</button><button id="monthlyBtn" class="btn ${state.ledgerMode==='monthly'?'':'btn-gray'}" style="flex:1;box-shadow:none;">월별 전체</button></div><div style="display:flex;flex-direction:column;gap:9px;">${state.ledgerMode==='daily'?`<div><div class="label">조회 날짜 선택</div><input id="ledgerDateInput" type="date" class="field" value="${state.selectedDate}" /></div>`:''}<input id="ledgerSearchInput" class="field" placeholder="검색어 입력..." value="${esc(state.ledgerSearch)}" /></div></div>
-        <div class="page-pad" style="padding-bottom:118px;"><div class="summary-dock"><div class="summary-box"><div class="row"><div><div style="font-size:9px;color:#94a3b8;font-weight:900;">변동지출 합계</div><div class="money" style="font-size:16px;">${formatMoney(total)}</div></div><div style="text-align:right;"><div style="font-size:9px;color:#fb7185;font-weight:900;">불필요한 지출</div><div class="money" style="font-size:13px;color:#fb7185;">${formatMoney(unnecessary)}</div></div></div><div style="height:1px;background:rgba(255,255,255,.08);margin:8px 0;"></div><div class="row"><div><div style="font-size:9px;color:#c4b5fd;font-weight:900;">한달예산 잔액</div><div class="money" style="font-size:13px;color:${budgetBalanceColor};">${formatMoney(budgetBalance)}</div></div><div style="text-align:right;"><div style="font-size:9px;color:#fbbf24;font-weight:900;">예상외 지출</div><div class="money" style="font-size:13px;color:#fbbf24;">${formatMoney(unexpected)}</div></div></div></div></div>${listHtml}</div>`;
+        <div class="page-pad" style="padding-bottom:118px;"><div class="summary-dock"><div class="summary-box"><div class="row"><div><div style="font-size:9px;color:#94a3b8;font-weight:900;">변동지출 합계</div><div class="money" style="font-size:16px;">${formatMoney(total)}</div></div><div style="text-align:right;"><div style="font-size:9px;color:#fb7185;font-weight:900;">불필요한 지출</div><div class="money" style="font-size:13px;color:#fb7185;">${formatMoney(unnecessary)}</div></div></div><div style="height:1px;background:rgba(255,255,255,.08);margin:8px 0;"></div><div class="row"><div><div class="ledger-budget-head"><span style="font-size:9px;color:#c4b5fd;font-weight:900;">한달예산 잔액</span><label class="ledger-budget-toggle"><input id="ledgerBudgetExcludeInstallment" type="checkbox" ${state.ledgerBudgetExcludeInstallment?'checked':''}/>할부제외</label></div><div class="money" style="font-size:13px;color:${budgetBalanceColor};">${formatMoney(budgetBalance)}</div></div><div style="text-align:right;"><div style="font-size:9px;color:#fbbf24;font-weight:900;">예상외 지출</div><div class="money" style="font-size:13px;color:#fbbf24;">${formatMoney(unexpected)}</div></div></div></div></div>${listHtml}</div>`;
       document.getElementById('dailyBtn').onclick=()=>{state.ledgerMode='daily';renderLedger();}; document.getElementById('monthlyBtn').onclick=()=>{state.ledgerMode='monthly';renderLedger();};
       const dateInput=document.getElementById('ledgerDateInput'); if(dateInput) dateInput.onchange=()=>{state.selectedDate=dateInput.value;state.currentMonth=state.selectedDate.slice(0,7);loadData();};
+      const budgetToggle=document.getElementById('ledgerBudgetExcludeInstallment'); if(budgetToggle) budgetToggle.onchange=()=>{state.ledgerBudgetExcludeInstallment=budgetToggle.checked;renderLedger();};
       document.getElementById('ledgerSearchInput').oninput=function(){state.ledgerSearch=this.value;renderLedger();}; attachTxCardEvents();
     }
     function txCardHtml(t,editable){
