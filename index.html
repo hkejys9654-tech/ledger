@@ -745,7 +745,7 @@
       const variable = txs.reduce((sum,t)=>sum+(Number(t.amount)||0),0);
       const unnecessary = txs.filter(t=>t.isUnnecessary).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
       const unexpected = txs.filter(t=>t.isUnexpected).reduce((sum,t)=>sum+(Number(t.amount)||0),0);
-      return {sheet,txs,income,fixed,fixedPlanned:fixedTotals.planned,monthlyBudget,monthlyBudgetBalance:monthlyBudget-variable,variable,totalExpense:fixed+variable,balance:income-fixed-variable,unnecessary,unexpected};
+      return {sheet,txs,income,fixed,fixedPlanned:fixedTotals.planned,monthlyBudget,monthlyBudgetBalance:monthlyBudget>0?monthlyBudget-variable:0,variable,totalExpense:fixed+variable,balance:income-fixed-variable,unnecessary,unexpected};
     }
 
     function renderDashboard(){
