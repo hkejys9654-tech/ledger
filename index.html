@@ -742,7 +742,6 @@
         totals.actual+=Number(item?.actual)||0;
         return totals;
       },{planned:0,actual:0});
-      (sheet?.educationAdditionalExpenses||[]).forEach(item=>{totals.planned+=Number(item?.planned)||0;totals.actual+=Number(item?.actual)||0;});
       return totals;
     }
     function getEducationActualTotal(sheet){
@@ -762,7 +761,7 @@
 
     function renderDashboard(){
       const el=document.getElementById('view-dashboard'); const s=getMonthStats(state.currentMonth); const maxTotal=Math.max(s.income,s.totalExpense,1);
-      const methodStats={}; PAYMENT_METHODS.forEach(m=>{ const f=Object.values(s.sheet.fixedExpenses).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const addEdu=(s.sheet.educationAdditionalExpenses||[]).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const tx=s.txs.filter(t=>t.paymentMethod===m).reduce((a,t)=>a+(Number(t.amount)||0),0); methodStats[m]=f+addEdu+tx; });
+      const methodStats={}; PAYMENT_METHODS.forEach(m=>{ const f=Object.values(s.sheet.fixedExpenses).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const tx=s.txs.filter(t=>t.paymentMethod===m).reduce((a,t)=>a+(Number(t.amount)||0),0); methodStats[m]=f+tx; });
       const cats=CATEGORIES.map(c=>{const amount=s.txs.filter(t=>t.category===c).reduce((a,t)=>a+(Number(t.amount)||0),0);return {name:c,amount,percent:Math.round(amount/Math.max(1,s.variable)*100)};});
       const colors=['#7047d7','#5d7df5','#43c7a5','#ffb15f','#cbd5e1']; let cursor=0;
       const segs=cats.filter(r=>r.amount>0).map(r=>{const st=cursor; const ed=cursor+(r.amount/Math.max(1,s.variable))*100; cursor=ed; return `${colors[CATEGORIES.indexOf(r.name)]} ${st}% ${ed}%`;});
@@ -832,7 +831,7 @@
             <div class="group-title">${miniIcon('shield')}<span>보험료 그룹</span></div>${fixedRow('insJiSeung')}${fixedRow('insGaEunSeon')}${fixedRow('insAll')}
             <div class="row" style="margin-top:10px;background:#f1ebff;border-radius:15px;padding:12px;color:#5b21b6;font-weight:900;"><span>보험료 실지출 합계</span><span id="plannerInsuranceActual">${formatMoney(insuranceSum)}</span></div>
             <div class="group-title">${miniIcon('book')}<span>교육비 그룹</span></div>${fixedRow('eduEunWoo')}${fixedRow('eduSeonWoo')}
-            <div style="margin-top:12px;"><div class="row" style="margin-bottom:8px;"><div class="label" style="margin:0;">추가 지출 항목</div>${state.plannerEditing?`<button id="addEduExtraBtn" class="btn btn-soft" style="font-size:11px;min-height:31px;padding:7px 10px;">+ 추가</button>`:''}</div>${(temp.educationAdditionalExpenses||[]).map(educationExtraRow).join('')}</div>
+            <div style="margin-top:12px;"><div class="row" style="margin-bottom:5px;"><div class="label" style="margin:0;">추가 지출 항목</div>${state.plannerEditing?`<button id="addEduExtraBtn" class="btn btn-soft" style="font-size:11px;min-height:31px;padding:7px 10px;">+ 추가</button>`:''}</div><div class="section-caption" style="margin:0 0 8px 0;line-height:1.35;">교육비 실지출 합계에만 반영됩니다.</div>${(temp.educationAdditionalExpenses||[]).map(educationExtraRow).join('')}</div>
             <div class="row" style="margin-top:10px;background:#ecfdf5;border-radius:15px;padding:12px;color:#047857;font-weight:900;"><span>교육비 실지출 합계</span><span id="plannerEducationActual">${formatMoney(eduSum)}</span></div>
           </div>
         </div>
@@ -903,7 +902,7 @@
     function getFilteredList(){
       const start=state.filterStart,end=state.filterEnd;if(!start||!end)return[];
       const varList=state.allData.transactions.filter(t=>t.date>=start&&t.date<=end).map(t=>Object.assign({},t,{type:'variable'}));
-      const fixList=[];state.allData.monthSheets.forEach(sheet=>{Object.entries(sheet.fixedExpenses||{}).forEach(([k,v])=>{if((Number(v.actual)||0)<=0)return;const date=`${sheet.month}-${String(v.day||1).padStart(2,'0')}`;if(date>=start&&date<=end)fixList.push({id:`fixed_${sheet.month}_${k}`,date,desc:FIXED_LABELS[k]||k,category:'고정지출',amount:Number(v.actual)||0,paymentMethod:v.method||'현금',type:'fixed'});});(sheet.educationAdditionalExpenses||[]).forEach((item,idx)=>{if((Number(item.actual)||0)<=0)return;const date=`${sheet.month}-${String(item.day||1).padStart(2,'0')}`;if(date>=start&&date<=end)fixList.push({id:`fixed_${sheet.month}_edu_extra_${item.id||idx}`,date,desc:item.desc||'추가 교육비',category:'고정지출',amount:Number(item.actual)||0,paymentMethod:item.method||'현금',type:'fixed'});});});
+      const fixList=[];state.allData.monthSheets.forEach(sheet=>{Object.entries(sheet.fixedExpenses||{}).forEach(([k,v])=>{if((Number(v.actual)||0)<=0)return;const date=`${sheet.month}-${String(v.day||1).padStart(2,'0')}`;if(date>=start&&date<=end)fixList.push({id:`fixed_${sheet.month}_${k}`,date,desc:FIXED_LABELS[k]||k,category:'고정지출',amount:Number(v.actual)||0,paymentMethod:v.method||'현금',type:'fixed'});});});
       const combined=varList.concat(fixList);let list=[];
       if(state.filterType==='method') {
         list=combined.filter(i=>{
@@ -921,7 +920,7 @@
     }
     function renderFilter(){
       initFilterDatesIfNeeded(); const el=document.getElementById('view-filter'); const list=getFilteredList(); const total=list.reduce((a,i)=>a+(Number(i.amount)||0),0);
-      const fixedFilterLabels=[...new Set(Object.values(FIXED_LABELS).concat(state.allData.monthSheets.flatMap(sheet=>(sheet.educationAdditionalExpenses||[]).map(item=>item.desc||'추가 교육비'))))];
+      const fixedFilterLabels=Object.values(FIXED_LABELS);
       el.innerHTML = `<div class="sticky-panel"><div style="display:flex;flex-direction:column;gap:10px;"><div><div class="label">이용 기간</div><div class="grid-2"><input id="filterStart" type="date" class="field" value="${state.filterStart}"/><input id="filterEnd" type="date" class="field" value="${state.filterEnd}"/></div></div><div><div class="label">필터 기준</div><select id="filterType" class="field"><option value="method">결제 수단별</option><option value="category">카테고리별</option><option value="fixed_card">카드 고정지출</option><option value="fixed_cash">현금 고정지출</option><option value="unnecessary">불필요한 지출</option><option value="unexpected">예상외 지출</option></select></div>${['method','category','fixed_card'].includes(state.filterType)?`<div><div class="label">세부 항목 선택</div><select id="filterValue" class="field">${state.filterType==='category'?`<optgroup label="변동지출 카테고리">${CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup><optgroup label="고정지출 전체 항목">${fixedFilterLabels.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup>`:`<option value="${FILTER_CARD_ALL}">카드전체 (현금제외)</option>${state.filterType==='method'?`<option value="${FILTER_CARD_ALL_NO_INSTALLMENT}">카드전체 (할부제외)</option>`:''}${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join('')}`}</select></div>`:''}</div><div class="row" style="margin-top:12px;background:#21182f;color:white;border-radius:18px;padding:14px;"><div style="min-width:0;"><div style="font-size:10px;font-weight:900;color:#94a3b8;">조회 결과: ${list.length}건</div><div style="font-size:11px;font-weight:900;color:#c4b5fd;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(state.filterValue||state.filterType)}</div></div><div style="text-align:right;"><div style="font-size:10px;font-weight:900;color:#94a3b8;">합계 금액</div><div class="money" style="font-size:19px;">${formatMoney(total)}</div></div></div></div><div class="page-pad">${list.length?list.map(item=>`<div class="tx-card" style="${item.type==='fixed'?'border-left:4px solid #a78bfa;':''}"><div class="tx-main"><div class="tx-meta"><span style="font-size:11px;font-weight:900;color:#94a3b8;">${esc(item.date.slice(5))}</span><span class="pill ${item.type==='fixed'?'pill-purple':''}">${esc(item.category)}</span>${item.type==='fixed'?'<span style="font-size:10px;font-weight:900;color:#a855f7;">FIXED</span>':''}${item.isUnnecessary?'<span class="pill pill-red">불필요</span>':''}${item.isUnexpected?'<span class="pill pill-amber">예상외</span>':''}</div><div class="tx-title">${esc(item.desc||'')}</div><div class="tx-method">${esc(item.paymentMethod||'')}</div></div><div class="money" style="font-size:15px;flex:0 0 auto;">-${formatMoney(item.amount)}</div></div>`).join(''):`<div style="text-align:center;padding:100px 0;color:#94a3b8;font-weight:800;"><div style="width:48px;height:48px;margin:0 auto 12px;color:#cbd5e1;">${svgIcon('search','svg-ico')}</div>조건에 맞는 내역이 없습니다.</div>`}</div>`;
       document.getElementById('filterStart').onchange=function(){state.filterStart=this.value;renderFilter();}; document.getElementById('filterEnd').onchange=function(){state.filterEnd=this.value;renderFilter();};
       const typeEl=document.getElementById('filterType'); typeEl.value=state.filterType; typeEl.onchange=function(){state.filterType=this.value;if(state.filterType==='method'||state.filterType==='fixed_card')state.filterValue=FILTER_CARD_ALL;else if(state.filterType==='category')state.filterValue=CATEGORIES[0];else state.filterValue='';renderFilter();};
@@ -956,7 +955,6 @@
       const s=getMonthStats(state.currentMonth); const rows=[['구분','날짜','카테고리','결제수단','내용','계획금액','실제금액','메모']];
       if(s.monthlyBudget>0) rows.push(['월예산','','변동지출','','한달 예산',s.monthlyBudget,'','']);
       Object.entries(s.sheet.fixedExpenses).forEach(([k,v])=>{if((Number(v.planned)||0)>0||(Number(v.actual)||0)>0)rows.push(['고정지출',`${s.sheet.month}-${String(v.day||1).padStart(2,'0')}`,'고정지출',v.method,FIXED_LABELS[k],v.planned||0,v.actual||0,'']);});
-      (s.sheet.educationAdditionalExpenses||[]).forEach(item=>{if((Number(item.planned)||0)>0||(Number(item.actual)||0)>0)rows.push(['고정지출',`${s.sheet.month}-${String(item.day||1).padStart(2,'0')}`,'고정지출',item.method||'현금',item.desc||'추가 교육비',item.planned||0,item.actual||0,'교육비 추가 지출']);});
       s.txs.sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>rows.push(['변동지출',t.date,t.category,t.paymentMethod,t.desc,'',t.amount,t.memo||'']));
       const csv='\ufeff'+rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`가계부_${state.currentMonth}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},0);
     }
