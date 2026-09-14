@@ -394,8 +394,9 @@
     .fixed-title .label-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .monthly-budget-line{display:grid;grid-template-columns:minmax(92px,1fr) minmax(132px,181px);align-items:center;gap:7px;}
     .income-line{display:grid;grid-template-columns:minmax(92px,1fr) 66px 108px;align-items:center;gap:7px;}
-    .monthly-budget-line .field,.income-line .field,.fixed-mini-grid .field,.mini-method{height:34px;min-height:34px;border-radius:12px;font-size:12px;padding:0 9px;box-shadow:0 5px 13px rgba(45,30,76,.028);}
+    .monthly-budget-line .field,.income-line .field,.fixed-mini-grid .field,.education-extra-top .field,.mini-method{height:34px;min-height:34px;border-radius:12px;font-size:12px;padding:0 9px;box-shadow:0 5px 13px rgba(45,30,76,.028);}
     .fixed-top{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:7px;align-items:center;}
+    .education-extra-top{display:grid;grid-template-columns:minmax(0,1fr) 92px auto;gap:7px;align-items:center;}
     .fixed-mini-grid{display:grid;grid-template-columns:66px 1fr 1fr;gap:7px;}
     .group-title{
       display:flex;align-items:center;gap:7px;
@@ -679,7 +680,7 @@
     function createInitialMonthSheet(month){
       const incomes={}; Object.keys(INCOME_LABELS).forEach(k=>incomes[k]={amount:0,day:1}); incomes.additional=[];
       const fixedExpenses={}; Object.keys(FIXED_LABELS).forEach(k=>fixedExpenses[k]={planned:0,actual:0,day:1,method:'현금'});
-      return {month,monthlyBudget:0,incomes,fixedExpenses};
+      return {month,monthlyBudget:0,incomes,fixedExpenses,educationAdditionalExpenses:[]};
     }
     function normalizeSheet(sheet, month){
       const next = sheet || createInitialMonthSheet(month); next.month = next.month || month; next.incomes = next.incomes || {};
@@ -688,6 +689,8 @@
       if(!Array.isArray(next.incomes.additional)) next.incomes.additional=[];
       next.fixedExpenses = next.fixedExpenses || {};
       Object.keys(FIXED_LABELS).forEach(k=>{ if(!next.fixedExpenses[k]) next.fixedExpenses[k]={planned:0,actual:0,day:1,method:'현금'}; const v=next.fixedExpenses[k]; v.planned=Number(v.planned)||0; v.actual=Number(v.actual)||0; v.day=Number(v.day)||1; v.method=v.method||'현금'; });
+      if(!Array.isArray(next.educationAdditionalExpenses)) next.educationAdditionalExpenses=[];
+      next.educationAdditionalExpenses=next.educationAdditionalExpenses.map((item,idx)=>({id:item.id || (Date.now()+idx),desc:item.desc||'',planned:Number(item.planned)||0,actual:Number(item.actual)||0,day:Number(item.day)||1,method:item.method||'현금'}));
       return next;
     }
     function getSheet(month){return state.allData.monthSheets.find(s=>s.month===month) || createInitialMonthSheet(month);}
@@ -734,11 +737,16 @@
     }
     function getFixedTotals(sheet){
       const fixed=sheet?.fixedExpenses||{};
-      return Object.values(fixed).reduce((totals,item)=>{
+      const totals=Object.values(fixed).reduce((totals,item)=>{
         totals.planned+=Number(item?.planned)||0;
         totals.actual+=Number(item?.actual)||0;
         return totals;
       },{planned:0,actual:0});
+      (sheet?.educationAdditionalExpenses||[]).forEach(item=>{totals.planned+=Number(item?.planned)||0;totals.actual+=Number(item?.actual)||0;});
+      return totals;
+    }
+    function getEducationActualTotal(sheet){
+      return ['eduEunWoo','eduSeonWoo'].reduce((sum,key)=>sum+(Number(sheet?.fixedExpenses?.[key]?.actual)||0),0) + (sheet?.educationAdditionalExpenses||[]).reduce((sum,item)=>sum+(Number(item.actual)||0),0);
     }
     function getMonthStats(month, excludeInstallmentBudget=false){
       const sheet=getSheet(month); const txs=state.allData.transactions.filter(t=>t.date && t.date.startsWith(month));
@@ -754,7 +762,7 @@
 
     function renderDashboard(){
       const el=document.getElementById('view-dashboard'); const s=getMonthStats(state.currentMonth); const maxTotal=Math.max(s.income,s.totalExpense,1);
-      const methodStats={}; PAYMENT_METHODS.forEach(m=>{ const f=Object.values(s.sheet.fixedExpenses).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const tx=s.txs.filter(t=>t.paymentMethod===m).reduce((a,t)=>a+(Number(t.amount)||0),0); methodStats[m]=f+tx; });
+      const methodStats={}; PAYMENT_METHODS.forEach(m=>{ const f=Object.values(s.sheet.fixedExpenses).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const addEdu=(s.sheet.educationAdditionalExpenses||[]).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const tx=s.txs.filter(t=>t.paymentMethod===m).reduce((a,t)=>a+(Number(t.amount)||0),0); methodStats[m]=f+addEdu+tx; });
       const cats=CATEGORIES.map(c=>{const amount=s.txs.filter(t=>t.category===c).reduce((a,t)=>a+(Number(t.amount)||0),0);return {name:c,amount,percent:Math.round(amount/Math.max(1,s.variable)*100)};});
       const colors=['#7047d7','#5d7df5','#43c7a5','#ffb15f','#cbd5e1']; let cursor=0;
       const segs=cats.filter(r=>r.amount>0).map(r=>{const st=cursor; const ed=cursor+(r.amount/Math.max(1,s.variable))*100; cursor=ed; return `${colors[CATEGORIES.indexOf(r.name)]} ${st}% ${ed}%`;});
@@ -798,10 +806,11 @@
       const el=document.getElementById('view-planner'); const temp=state.plannerTemp || deepClone(state.monthSheet); const opt=daysOptions();
       const monthlyBudget=Number(temp.monthlyBudget)||0; const incomeSum=getIncomeTotal(temp); const fixedTotals=getFixedTotals(temp);
       const grandPlanned=fixedTotals.planned; const grandActual=fixedTotals.actual; const balance=grandPlanned-grandActual;
-      const insuranceSum=['insJiSeung','insGaEunSeon','insAll'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0); const eduSum=['eduEunWoo','eduSeonWoo'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0);
+      const insuranceSum=['insJiSeung','insGaEunSeon','insAll'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0); const eduSum=getEducationActualTotal(temp);
       const editAttr=state.plannerEditing?'':'disabled';
       function incomeRow(k){const v=temp.incomes[k];return `<div class="fixed-row"><div class="income-line"><div class="fixed-title">${INCOME_LABELS[k]}</div><select class="field planner-income-day" data-key="${k}" ${editAttr}>${opt}</select><input class="field money-input planner-income-amount" data-key="${k}" value="${v.amount?Number(v.amount).toLocaleString():''}" placeholder="0" inputmode="numeric" style="text-align:right;" ${editAttr}/></div></div>`;}
       function fixedRow(k){const v=temp.fixedExpenses[k];return `<div class="fixed-row"><div class="fixed-top"><div class="fixed-title">${miniIcon(FIXED_ICON[k]||'receipt')}<span class="label-text">${FIXED_LABELS[k]}</span></div><select class="field planner-fixed-method mini-method" data-key="${k}" ${editAttr}>${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div><div class="fixed-mini-grid"><select class="field planner-fixed-day" data-key="${k}" ${editAttr}>${opt}</select><input class="field money-input planner-fixed-planned" data-key="${k}" value="${v.planned?Number(v.planned).toLocaleString():''}" placeholder="계획" inputmode="numeric" style="text-align:right;background:#f7f3ff;" ${editAttr}/><input class="field money-input planner-fixed-actual" data-key="${k}" value="${v.actual?Number(v.actual).toLocaleString():''}" placeholder="실제" inputmode="numeric" style="text-align:right;background:#fbfcfe;" ${editAttr}/></div></div>`;}
+      function educationExtraRow(item){return `<div class="card" style="margin-bottom:7px;padding:10px;border-radius:16px;background:#fbfcfe;box-shadow:none;"><div class="education-extra-top"><input class="field edu-extra-desc" data-id="${item.id}" value="${esc(item.desc||'')}" placeholder="지출 명칭" ${editAttr}/><select class="field edu-extra-method mini-method" data-id="${item.id}" ${editAttr}>${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select>${state.plannerEditing?`<button class="btn btn-red remove-edu-extra-btn" data-id="${item.id}" style="min-height:34px;padding:7px 10px;">－</button>`:''}</div><div class="fixed-mini-grid" style="margin-top:7px;"><select class="field edu-extra-day" data-id="${item.id}" ${editAttr}>${opt}</select><input class="field money-input edu-extra-planned" data-id="${item.id}" value="${item.planned?Number(item.planned).toLocaleString():''}" placeholder="계획" inputmode="numeric" style="text-align:right;background:#f7f3ff;" ${editAttr}/><input class="field money-input edu-extra-actual" data-id="${item.id}" value="${item.actual?Number(item.actual).toLocaleString():''}" placeholder="실제" inputmode="numeric" style="text-align:right;background:#fbfcfe;" ${editAttr}/></div></div>`;}
       el.innerHTML = `
         <div class="sticky-panel"><div class="row"><div style="min-width:0;"><div style="font-size:18px;font-weight:900;">고정예산 관리</div><div style="font-size:11px;color:#7047d7;font-weight:900;margin-top:3px;">${state.currentMonth} 시트</div></div><div style="display:flex;gap:7px;">${state.plannerEditing?`<button id="plannerCancelBtn" class="btn btn-gray">취소</button><button id="plannerSaveBtn" class="btn btn-primary">저장</button>`:`<button id="plannerEditBtn" class="btn">수정</button>`}</div></div></div>
         <div class="page-pad" style="padding-bottom:230px;">
@@ -823,6 +832,7 @@
             <div class="group-title">${miniIcon('shield')}<span>보험료 그룹</span></div>${fixedRow('insJiSeung')}${fixedRow('insGaEunSeon')}${fixedRow('insAll')}
             <div class="row" style="margin-top:10px;background:#f1ebff;border-radius:15px;padding:12px;color:#5b21b6;font-weight:900;"><span>보험료 실지출 합계</span><span id="plannerInsuranceActual">${formatMoney(insuranceSum)}</span></div>
             <div class="group-title">${miniIcon('book')}<span>교육비 그룹</span></div>${fixedRow('eduEunWoo')}${fixedRow('eduSeonWoo')}
+            <div style="margin-top:12px;"><div class="row" style="margin-bottom:8px;"><div class="label" style="margin:0;">추가 지출 항목</div>${state.plannerEditing?`<button id="addEduExtraBtn" class="btn btn-soft" style="font-size:11px;min-height:31px;padding:7px 10px;">+ 추가</button>`:''}</div>${(temp.educationAdditionalExpenses||[]).map(educationExtraRow).join('')}</div>
             <div class="row" style="margin-top:10px;background:#ecfdf5;border-radius:15px;padding:12px;color:#047857;font-weight:900;"><span>교육비 실지출 합계</span><span id="plannerEducationActual">${formatMoney(eduSum)}</span></div>
           </div>
         </div>
@@ -831,6 +841,7 @@
     }
 
     function attachPlannerEvents(temp){
+      temp.educationAdditionalExpenses=temp.educationAdditionalExpenses||[];
       const monthlyBudgetInput=document.getElementById('monthlyBudgetInput'); if(monthlyBudgetInput){monthlyBudgetInput.oninput=e=>{moneyInputHandler(e);temp.monthlyBudget=cleanMoney(monthlyBudgetInput.value);};monthlyBudgetInput.onchange=()=>{temp.monthlyBudget=cleanMoney(monthlyBudgetInput.value);};}
       document.querySelectorAll('.planner-income-day').forEach(el=>{el.value=temp.incomes[el.dataset.key].day;el.onchange=()=>{temp.incomes[el.dataset.key].day=Number(el.value);};});
       document.querySelectorAll('.planner-income-amount').forEach(el=>{const sync=()=>{temp.incomes[el.dataset.key].amount=cleanMoney(el.value);updatePlannerIncomeTotal(temp);};el.oninput=e=>{moneyInputHandler(e);sync();};el.onchange=sync;});
@@ -842,10 +853,17 @@
       document.querySelectorAll('.add-income-day').forEach(el=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id)); if(item)el.value=item.day; el.onchange=()=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.day=Number(el.value);};});
       document.querySelectorAll('.add-income-amount').forEach(el=>{const sync=()=>{const item=temp.incomes.additional.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.amount=cleanMoney(el.value);updatePlannerIncomeTotal(temp);};el.oninput=e=>{moneyInputHandler(e);sync();};el.onchange=sync;});
       document.querySelectorAll('.remove-income-btn').forEach(btn=>btn.onclick=()=>{temp.incomes.additional=temp.incomes.additional.filter(i=>String(i.id)!==String(btn.dataset.id));renderPlanner();});
+      document.querySelectorAll('.edu-extra-desc').forEach(el=>{el.oninput=()=>{const item=temp.educationAdditionalExpenses.find(i=>String(i.id)===String(el.dataset.id));if(item)item.desc=el.value;};});
+      document.querySelectorAll('.edu-extra-method').forEach(el=>{const item=temp.educationAdditionalExpenses.find(i=>String(i.id)===String(el.dataset.id)); if(item)el.value=item.method; el.onchange=()=>{const item=temp.educationAdditionalExpenses.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.method=el.value;};});
+      document.querySelectorAll('.edu-extra-day').forEach(el=>{const item=temp.educationAdditionalExpenses.find(i=>String(i.id)===String(el.dataset.id)); if(item)el.value=item.day; el.onchange=()=>{const item=temp.educationAdditionalExpenses.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.day=Number(el.value);};});
+      document.querySelectorAll('.edu-extra-planned').forEach(el=>{const sync=()=>{const item=temp.educationAdditionalExpenses.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.planned=cleanMoney(el.value);updatePlannerFixedTotals(temp);};el.oninput=e=>{moneyInputHandler(e);sync();};el.onchange=sync;});
+      document.querySelectorAll('.edu-extra-actual').forEach(el=>{const sync=()=>{const item=temp.educationAdditionalExpenses.find(i=>String(i.id)===String(el.dataset.id)); if(item)item.actual=cleanMoney(el.value);updatePlannerFixedTotals(temp);};el.oninput=e=>{moneyInputHandler(e);sync();};el.onchange=sync;});
+      document.querySelectorAll('.remove-edu-extra-btn').forEach(btn=>btn.onclick=()=>{temp.educationAdditionalExpenses=temp.educationAdditionalExpenses.filter(i=>String(i.id)!==String(btn.dataset.id));renderPlanner();});
       const edit=document.getElementById('plannerEditBtn'); if(edit) edit.onclick=()=>{state.plannerEditing=true;state.plannerTemp=deepClone(state.monthSheet);renderPlanner();};
       const cancel=document.getElementById('plannerCancelBtn'); if(cancel) cancel.onclick=()=>{state.plannerEditing=false;state.plannerTemp=deepClone(state.monthSheet);renderPlanner();};
       const save=document.getElementById('plannerSaveBtn'); if(save) save.onclick=async()=>{try{state.plannerTemp=normalizeSheet(state.plannerTemp,state.currentMonth);await dbOps.saveMonthSheet(state.plannerTemp);state.plannerEditing=false;state.plannerTemp=null;await loadData();showToast('고정예산 저장 완료');}catch(err){alert('고정예산 저장 실패: '+(err.message||err));}};
       const add=document.getElementById('addIncomeBtn'); if(add) add.onclick=()=>{temp.incomes.additional.push({id:Date.now(),desc:'',amount:0,day:1});renderPlanner();};
+      const addEduExtra=document.getElementById('addEduExtraBtn'); if(addEduExtra) addEduExtra.onclick=()=>{temp.educationAdditionalExpenses.push({id:Date.now(),desc:'',planned:0,actual:0,day:1,method:'현금'});renderPlanner();};
       const lp=document.getElementById('loadPrevPlannedBtn'); if(lp) lp.onclick=()=>loadPrevMonthData('planned');
       const la=document.getElementById('loadPrevActualBtn'); if(la) la.onclick=()=>loadPrevMonthData('actual');
     }
@@ -857,9 +875,9 @@
       setText('plannerFixedActual',formatMoney(totals.actual));
       const balanceEl=document.getElementById('plannerFixedBalance'); if(balanceEl){balanceEl.textContent=(balance>=0?'+':'')+formatMoney(balance);balanceEl.style.color=balance>=0?'#34d399':'#f87171';}
       setText('plannerInsuranceActual',formatMoney(['insJiSeung','insGaEunSeon','insAll'].reduce((sum,key)=>sum+(Number(sheet.fixedExpenses[key]?.actual)||0),0)));
-      setText('plannerEducationActual',formatMoney(['eduEunWoo','eduSeonWoo'].reduce((sum,key)=>sum+(Number(sheet.fixedExpenses[key]?.actual)||0),0)));
+      setText('plannerEducationActual',formatMoney(getEducationActualTotal(sheet)));
     }
-    async function loadPrevMonthData(type){const prev=addMonths(state.currentMonth+'-01',-1).slice(0,7);const ps=await dbOps.getMonthSheet(prev);if(type==='planned')state.plannerTemp.monthlyBudget=Number(ps.monthlyBudget)||0;Object.keys(FIXED_LABELS).forEach(k=>{if(ps.fixedExpenses[k]){state.plannerTemp.fixedExpenses[k][type]=ps.fixedExpenses[k][type];state.plannerTemp.fixedExpenses[k].day=ps.fixedExpenses[k].day;state.plannerTemp.fixedExpenses[k].method=ps.fixedExpenses[k].method;}});renderPlanner();showToast('이전 달 자료를 가져왔어요');}
+    async function loadPrevMonthData(type){const prev=addMonths(state.currentMonth+'-01',-1).slice(0,7);const ps=await dbOps.getMonthSheet(prev);if(type==='planned')state.plannerTemp.monthlyBudget=Number(ps.monthlyBudget)||0;Object.keys(FIXED_LABELS).forEach(k=>{if(ps.fixedExpenses[k]){state.plannerTemp.fixedExpenses[k][type]=ps.fixedExpenses[k][type];state.plannerTemp.fixedExpenses[k].day=ps.fixedExpenses[k].day;state.plannerTemp.fixedExpenses[k].method=ps.fixedExpenses[k].method;}});const currentExtras=state.plannerTemp.educationAdditionalExpenses||[];state.plannerTemp.educationAdditionalExpenses=(ps.educationAdditionalExpenses||[]).map((item,idx)=>{const prevDesc=item.desc||'';const current=currentExtras.find(v=>(v.desc||'')===prevDesc);return {id:current?.id||(Date.now()+idx),desc:prevDesc,planned:type==='planned'?(Number(item.planned)||0):(Number(current?.planned)||0),actual:type==='actual'?(Number(item.actual)||0):(Number(current?.actual)||0),day:Number(item.day)||Number(current?.day)||1,method:item.method||current?.method||'현금'};});renderPlanner();showToast('이전 달 자료를 가져왔어요');}
 
     function renderLedger(){
       const el=document.getElementById('view-ledger');
@@ -885,7 +903,7 @@
     function getFilteredList(){
       const start=state.filterStart,end=state.filterEnd;if(!start||!end)return[];
       const varList=state.allData.transactions.filter(t=>t.date>=start&&t.date<=end).map(t=>Object.assign({},t,{type:'variable'}));
-      const fixList=[];state.allData.monthSheets.forEach(sheet=>{Object.entries(sheet.fixedExpenses||{}).forEach(([k,v])=>{if((Number(v.actual)||0)<=0)return;const date=`${sheet.month}-${String(v.day||1).padStart(2,'0')}`;if(date>=start&&date<=end)fixList.push({id:`fixed_${sheet.month}_${k}`,date,desc:FIXED_LABELS[k]||k,category:'고정지출',amount:Number(v.actual)||0,paymentMethod:v.method||'현금',type:'fixed'});});});
+      const fixList=[];state.allData.monthSheets.forEach(sheet=>{Object.entries(sheet.fixedExpenses||{}).forEach(([k,v])=>{if((Number(v.actual)||0)<=0)return;const date=`${sheet.month}-${String(v.day||1).padStart(2,'0')}`;if(date>=start&&date<=end)fixList.push({id:`fixed_${sheet.month}_${k}`,date,desc:FIXED_LABELS[k]||k,category:'고정지출',amount:Number(v.actual)||0,paymentMethod:v.method||'현금',type:'fixed'});});(sheet.educationAdditionalExpenses||[]).forEach((item,idx)=>{if((Number(item.actual)||0)<=0)return;const date=`${sheet.month}-${String(item.day||1).padStart(2,'0')}`;if(date>=start&&date<=end)fixList.push({id:`fixed_${sheet.month}_edu_extra_${item.id||idx}`,date,desc:item.desc||'추가 교육비',category:'고정지출',amount:Number(item.actual)||0,paymentMethod:item.method||'현금',type:'fixed'});});});
       const combined=varList.concat(fixList);let list=[];
       if(state.filterType==='method') {
         list=combined.filter(i=>{
@@ -903,7 +921,8 @@
     }
     function renderFilter(){
       initFilterDatesIfNeeded(); const el=document.getElementById('view-filter'); const list=getFilteredList(); const total=list.reduce((a,i)=>a+(Number(i.amount)||0),0);
-      el.innerHTML = `<div class="sticky-panel"><div style="display:flex;flex-direction:column;gap:10px;"><div><div class="label">이용 기간</div><div class="grid-2"><input id="filterStart" type="date" class="field" value="${state.filterStart}"/><input id="filterEnd" type="date" class="field" value="${state.filterEnd}"/></div></div><div><div class="label">필터 기준</div><select id="filterType" class="field"><option value="method">결제 수단별</option><option value="category">카테고리별</option><option value="fixed_card">카드 고정지출</option><option value="fixed_cash">현금 고정지출</option><option value="unnecessary">불필요한 지출</option><option value="unexpected">예상외 지출</option></select></div>${['method','category','fixed_card'].includes(state.filterType)?`<div><div class="label">세부 항목 선택</div><select id="filterValue" class="field">${state.filterType==='category'?`<optgroup label="변동지출 카테고리">${CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup><optgroup label="고정지출 전체 항목">${Object.values(FIXED_LABELS).map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup>`:`<option value="${FILTER_CARD_ALL}">카드전체 (현금제외)</option>${state.filterType==='method'?`<option value="${FILTER_CARD_ALL_NO_INSTALLMENT}">카드전체 (할부제외)</option>`:''}${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join('')}`}</select></div>`:''}</div><div class="row" style="margin-top:12px;background:#21182f;color:white;border-radius:18px;padding:14px;"><div style="min-width:0;"><div style="font-size:10px;font-weight:900;color:#94a3b8;">조회 결과: ${list.length}건</div><div style="font-size:11px;font-weight:900;color:#c4b5fd;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(state.filterValue||state.filterType)}</div></div><div style="text-align:right;"><div style="font-size:10px;font-weight:900;color:#94a3b8;">합계 금액</div><div class="money" style="font-size:19px;">${formatMoney(total)}</div></div></div></div><div class="page-pad">${list.length?list.map(item=>`<div class="tx-card" style="${item.type==='fixed'?'border-left:4px solid #a78bfa;':''}"><div class="tx-main"><div class="tx-meta"><span style="font-size:11px;font-weight:900;color:#94a3b8;">${esc(item.date.slice(5))}</span><span class="pill ${item.type==='fixed'?'pill-purple':''}">${esc(item.category)}</span>${item.type==='fixed'?'<span style="font-size:10px;font-weight:900;color:#a855f7;">FIXED</span>':''}${item.isUnnecessary?'<span class="pill pill-red">불필요</span>':''}${item.isUnexpected?'<span class="pill pill-amber">예상외</span>':''}</div><div class="tx-title">${esc(item.desc||'')}</div><div class="tx-method">${esc(item.paymentMethod||'')}</div></div><div class="money" style="font-size:15px;flex:0 0 auto;">-${formatMoney(item.amount)}</div></div>`).join(''):`<div style="text-align:center;padding:100px 0;color:#94a3b8;font-weight:800;"><div style="width:48px;height:48px;margin:0 auto 12px;color:#cbd5e1;">${svgIcon('search','svg-ico')}</div>조건에 맞는 내역이 없습니다.</div>`}</div>`;
+      const fixedFilterLabels=[...new Set(Object.values(FIXED_LABELS).concat(state.allData.monthSheets.flatMap(sheet=>(sheet.educationAdditionalExpenses||[]).map(item=>item.desc||'추가 교육비'))))];
+      el.innerHTML = `<div class="sticky-panel"><div style="display:flex;flex-direction:column;gap:10px;"><div><div class="label">이용 기간</div><div class="grid-2"><input id="filterStart" type="date" class="field" value="${state.filterStart}"/><input id="filterEnd" type="date" class="field" value="${state.filterEnd}"/></div></div><div><div class="label">필터 기준</div><select id="filterType" class="field"><option value="method">결제 수단별</option><option value="category">카테고리별</option><option value="fixed_card">카드 고정지출</option><option value="fixed_cash">현금 고정지출</option><option value="unnecessary">불필요한 지출</option><option value="unexpected">예상외 지출</option></select></div>${['method','category','fixed_card'].includes(state.filterType)?`<div><div class="label">세부 항목 선택</div><select id="filterValue" class="field">${state.filterType==='category'?`<optgroup label="변동지출 카테고리">${CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup><optgroup label="고정지출 전체 항목">${fixedFilterLabels.map(c=>`<option value="${c}">${c}</option>`).join('')}</optgroup>`:`<option value="${FILTER_CARD_ALL}">카드전체 (현금제외)</option>${state.filterType==='method'?`<option value="${FILTER_CARD_ALL_NO_INSTALLMENT}">카드전체 (할부제외)</option>`:''}${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join('')}`}</select></div>`:''}</div><div class="row" style="margin-top:12px;background:#21182f;color:white;border-radius:18px;padding:14px;"><div style="min-width:0;"><div style="font-size:10px;font-weight:900;color:#94a3b8;">조회 결과: ${list.length}건</div><div style="font-size:11px;font-weight:900;color:#c4b5fd;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(state.filterValue||state.filterType)}</div></div><div style="text-align:right;"><div style="font-size:10px;font-weight:900;color:#94a3b8;">합계 금액</div><div class="money" style="font-size:19px;">${formatMoney(total)}</div></div></div></div><div class="page-pad">${list.length?list.map(item=>`<div class="tx-card" style="${item.type==='fixed'?'border-left:4px solid #a78bfa;':''}"><div class="tx-main"><div class="tx-meta"><span style="font-size:11px;font-weight:900;color:#94a3b8;">${esc(item.date.slice(5))}</span><span class="pill ${item.type==='fixed'?'pill-purple':''}">${esc(item.category)}</span>${item.type==='fixed'?'<span style="font-size:10px;font-weight:900;color:#a855f7;">FIXED</span>':''}${item.isUnnecessary?'<span class="pill pill-red">불필요</span>':''}${item.isUnexpected?'<span class="pill pill-amber">예상외</span>':''}</div><div class="tx-title">${esc(item.desc||'')}</div><div class="tx-method">${esc(item.paymentMethod||'')}</div></div><div class="money" style="font-size:15px;flex:0 0 auto;">-${formatMoney(item.amount)}</div></div>`).join(''):`<div style="text-align:center;padding:100px 0;color:#94a3b8;font-weight:800;"><div style="width:48px;height:48px;margin:0 auto 12px;color:#cbd5e1;">${svgIcon('search','svg-ico')}</div>조건에 맞는 내역이 없습니다.</div>`}</div>`;
       document.getElementById('filterStart').onchange=function(){state.filterStart=this.value;renderFilter();}; document.getElementById('filterEnd').onchange=function(){state.filterEnd=this.value;renderFilter();};
       const typeEl=document.getElementById('filterType'); typeEl.value=state.filterType; typeEl.onchange=function(){state.filterType=this.value;if(state.filterType==='method'||state.filterType==='fixed_card')state.filterValue=FILTER_CARD_ALL;else if(state.filterType==='category')state.filterValue=CATEGORIES[0];else state.filterValue='';renderFilter();};
       const valueEl=document.getElementById('filterValue'); if(valueEl){valueEl.value=state.filterValue;valueEl.onchange=function(){state.filterValue=this.value;renderFilter();};}
@@ -937,6 +956,7 @@
       const s=getMonthStats(state.currentMonth); const rows=[['구분','날짜','카테고리','결제수단','내용','계획금액','실제금액','메모']];
       if(s.monthlyBudget>0) rows.push(['월예산','','변동지출','','한달 예산',s.monthlyBudget,'','']);
       Object.entries(s.sheet.fixedExpenses).forEach(([k,v])=>{if((Number(v.planned)||0)>0||(Number(v.actual)||0)>0)rows.push(['고정지출',`${s.sheet.month}-${String(v.day||1).padStart(2,'0')}`,'고정지출',v.method,FIXED_LABELS[k],v.planned||0,v.actual||0,'']);});
+      (s.sheet.educationAdditionalExpenses||[]).forEach(item=>{if((Number(item.planned)||0)>0||(Number(item.actual)||0)>0)rows.push(['고정지출',`${s.sheet.month}-${String(item.day||1).padStart(2,'0')}`,'고정지출',item.method||'현금',item.desc||'추가 교육비',item.planned||0,item.actual||0,'교육비 추가 지출']);});
       s.txs.sort((a,b)=>new Date(a.date)-new Date(b.date)).forEach(t=>rows.push(['변동지출',t.date,t.category,t.paymentMethod,t.desc,'',t.amount,t.memo||'']));
       const csv='\ufeff'+rows.map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`가계부_${state.currentMonth}.csv`; document.body.appendChild(a); a.click(); setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},0);
     }
