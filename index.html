@@ -236,6 +236,7 @@
     .pill-blue{background:#dbeafe;color:#2563eb;}
     .pill-green{background:#d1fae5;color:#059669;}
     .pill-orange{background:#ffedd5;color:#ea580c;}
+    .pill-cyan{background:#cffafe;color:#0891b2;}
 
     .tx-card{
       background:#fff;
@@ -535,7 +536,7 @@
     const PAYMENT_METHODS = ['롯데카드','현대카드','신한카드','광주카드','체크카드','현금'];
     const FILTER_CARD_ALL = '카드전체';
     const FILTER_CARD_ALL_NO_INSTALLMENT = '카드전체 (할부제외)';
-    const CATEGORIES = ['식비','외식비','생활비','기타','기타현금지출'];
+    const CATEGORIES = ['식비','외식비','생활비','여행','기타','기타현금지출'];
     const METHOD_ICON = {'롯데카드':'card-heart','현대카드':'card-bold','신한카드':'card-lightning','광주카드':'card-wave','체크카드':'card-check','현금':'cash'};
 
     const state = {
@@ -763,7 +764,7 @@
       const el=document.getElementById('view-dashboard'); const s=getMonthStats(state.currentMonth); const maxTotal=Math.max(s.income,s.totalExpense,1);
       const methodStats={}; PAYMENT_METHODS.forEach(m=>{ const f=Object.values(s.sheet.fixedExpenses).filter(v=>v.method===m).reduce((a,v)=>a+(Number(v.actual)||0),0); const tx=s.txs.filter(t=>t.paymentMethod===m).reduce((a,t)=>a+(Number(t.amount)||0),0); methodStats[m]=f+tx; });
       const cats=CATEGORIES.map(c=>{const amount=s.txs.filter(t=>t.category===c).reduce((a,t)=>a+(Number(t.amount)||0),0);return {name:c,amount,percent:Math.round(amount/Math.max(1,s.variable)*100)};});
-      const colors=['#7047d7','#5d7df5','#43c7a5','#ffb15f','#cbd5e1']; let cursor=0;
+      const colors=['#7047d7','#5d7df5','#43c7a5','#06b6d4','#ffb15f','#cbd5e1']; let cursor=0;
       const segs=cats.filter(r=>r.amount>0).map(r=>{const st=cursor; const ed=cursor+(r.amount/Math.max(1,s.variable))*100; cursor=ed; return `${colors[CATEGORIES.indexOf(r.name)]} ${st}% ${ed}%`;});
       const donutBg=segs.length?`conic-gradient(${segs.join(',')})`:'conic-gradient(#ded9e8 0% 100%)';
       el.innerHTML = `
@@ -893,7 +894,7 @@
       document.getElementById('ledgerSearchInput').oninput=function(){state.ledgerSearch=this.value;renderLedger();}; attachTxCardEvents();
     }
     function txCardHtml(t,editable){
-      const catClass=t.category==='식비'?'pill-blue':t.category==='외식비'?'pill-orange':t.category==='생활비'?'pill-green':t.category==='기타현금지출'?'pill-amber':'';
+      const catClass=t.category==='식비'?'pill-blue':t.category==='외식비'?'pill-orange':t.category==='생활비'?'pill-green':t.category==='여행'?'pill-cyan':t.category==='기타현금지출'?'pill-amber':'';
       return `<div class="tx-card" data-id="${esc(t.id)}" ${editable?'data-editable="1"':''}><div class="tx-main"><div class="tx-meta"><span style="font-size:10px;font-weight:900;color:#94a3b8;">${esc((t.date||'').slice(5))}</span><span class="pill ${catClass}">${esc(t.category||'')}</span>${t.isInstallment?'<span class="pill pill-purple">할부</span>':''}${t.isUnnecessary?'<span class="pill pill-red">불필요</span>':''}${t.isUnexpected?'<span class="pill pill-amber">예상외</span>':''}</div><div class="tx-title">${esc(t.desc||'')}</div>${t.memo?`<div class="tx-note">${esc(t.memo)}</div>`:''}<div class="tx-method">${esc(t.paymentMethod||'')}</div></div><div style="text-align:right;flex:0 0 auto;min-width:78px;"><div class="money" style="font-size:13px;">-${formatMoney(t.amount)}</div>${editable?`<button class="delete-btn" data-delete-id="${esc(t.id)}" style="margin-top:5px;">${svgIcon('trash')}</button>`:''}</div></div>`;
     }
     function attachTxCardEvents(){document.querySelectorAll('.tx-card[data-editable="1"]').forEach(card=>card.onclick=()=>{const tx=state.allData.transactions.find(t=>String(t.id)===String(card.dataset.id));if(tx)openTxModal(tx);});document.querySelectorAll('[data-delete-id]').forEach(btn=>btn.onclick=e=>{e.stopPropagation();state.deleteTargetId=btn.dataset.deleteId;openModal('deleteModal');});}
