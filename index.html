@@ -555,6 +555,7 @@
     const PAYMENT_METHODS = ['롯데카드','현대카드','신한카드','광주카드','체크카드','현금'];
     const FILTER_CARD_ALL = '카드전체';
     const FILTER_CARD_ALL_NO_INSTALLMENT = '카드전체 (할부제외)';
+    const FILTER_CARD_INSTALLMENT_ONLY = '카드전체 (할부내역만)';
     const CATEGORIES = ['식비','외식비','생활비','여행','기타','기타현금지출'];
     const METHOD_ICON = {'롯데카드':'card-heart','현대카드':'card-bold','신한카드':'card-lightning','광주카드':'card-wave','체크카드':'card-check','현금':'cash'};
 
@@ -957,6 +958,7 @@
         list=combined.filter(i=>{
           if(state.filterValue===FILTER_CARD_ALL) return i.paymentMethod!=='현금';
           if(state.filterValue===FILTER_CARD_ALL_NO_INSTALLMENT) return i.paymentMethod!=='현금' && !(i.type==='variable' && i.isInstallment);
+          if(state.filterValue===FILTER_CARD_INSTALLMENT_ONLY) return i.type==='variable' && i.paymentMethod!=='현금' && !!i.isInstallment;
           return i.paymentMethod===state.filterValue;
         });
       }
@@ -978,8 +980,9 @@
       const filterCalendarPrev=document.getElementById('filterCalendarPrev'); if(filterCalendarPrev) filterCalendarPrev.onclick=()=>{state.filterCalendarMonth=addMonths(state.filterCalendarMonth+'-01',-1).slice(0,7);renderFilter();};
       const filterCalendarNext=document.getElementById('filterCalendarNext'); if(filterCalendarNext) filterCalendarNext.onclick=()=>{state.filterCalendarMonth=addMonths(state.filterCalendarMonth+'-01',1).slice(0,7);renderFilter();};
       document.querySelectorAll('[data-filter-date]').forEach(button=>button.onclick=()=>{if(button.dataset.filterTarget==='start')state.filterStart=button.dataset.filterDate;else state.filterEnd=button.dataset.filterDate;state.filterCalendarOpen='';state.filterCalendarMonth='';renderFilter();});
+      el.querySelectorAll('.page-pad .tx-card').forEach((card,index)=>{const item=list[index];if(item?.isInstallment){const badge=document.createElement('span');badge.className='pill pill-purple';badge.textContent='할부';card.querySelector('.tx-meta')?.appendChild(badge);}});
       const typeEl=document.getElementById('filterType'); typeEl.value=state.filterType; typeEl.onchange=function(){state.filterType=this.value;if(state.filterType==='method'||state.filterType==='fixed_card')state.filterValue=FILTER_CARD_ALL;else if(state.filterType==='category')state.filterValue=CATEGORIES[0];else state.filterValue='';renderFilter();};
-      const valueEl=document.getElementById('filterValue'); if(valueEl){valueEl.value=state.filterValue;valueEl.onchange=function(){state.filterValue=this.value;renderFilter();};}
+      const valueEl=document.getElementById('filterValue'); if(valueEl){if(state.filterType==='method'){const installmentOption=document.createElement('option');installmentOption.value=FILTER_CARD_INSTALLMENT_ONLY;installmentOption.textContent=FILTER_CARD_INSTALLMENT_ONLY;valueEl.insertBefore(installmentOption,valueEl.options[2]||null);}valueEl.value=state.filterValue;valueEl.onchange=function(){state.filterValue=this.value;renderFilter();};}
     }
 
     function renderSettings(){
