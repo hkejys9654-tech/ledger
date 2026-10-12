@@ -492,6 +492,8 @@
     </nav>
   </div>
 
+  <div id="plannerToolbarPortal"></div>
+
   <div id="txModal" class="modal">
     <div class="modal-box">
       <div class="modal-head">
@@ -773,6 +775,7 @@
 
     function render(){
       renderHeader(); renderTabs();
+      document.getElementById('plannerToolbarPortal').innerHTML='';
       document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
       document.getElementById('view-'+state.tab).classList.add('active');
       document.getElementById('fabAdd').style.display = state.tab === 'ledger' ? 'block' : 'none';
@@ -868,11 +871,11 @@
       const grandPlanned=fixedTotals.planned; const grandActual=fixedTotals.actual; const balance=grandPlanned-grandActual;
       const insuranceSum=['insJiSeung','insGaEunSeon','insAll'].reduce((a,k)=>a+(temp.fixedExpenses[k]?.actual||0),0); const eduSum=getEducationActualTotal(temp);
       const editAttr=state.plannerEditing?'':'disabled';
+      document.getElementById('plannerToolbarPortal').innerHTML=`<div class="planner-toolbar"><div class="row"><div style="min-width:0;"><div style="font-size:18px;font-weight:900;">고정예산 관리</div><div style="font-size:11px;color:#7047d7;font-weight:900;margin-top:3px;">${state.currentMonth} 시트</div></div><div style="display:flex;gap:7px;">${state.plannerEditing?`<button id="plannerCancelBtn" class="btn btn-gray">취소</button><button id="plannerSaveBtn" class="btn btn-primary">저장</button>`:`<button id="plannerEditBtn" class="btn">수정</button>`}</div></div></div>`;
       function incomeRow(k){const v=temp.incomes[k];return `<div class="fixed-row"><div class="income-line"><div class="fixed-title">${INCOME_LABELS[k]}</div><select class="field planner-income-day" data-key="${k}" ${editAttr}>${opt}</select><input class="field money-input planner-income-amount" data-key="${k}" value="${v.amount?Number(v.amount).toLocaleString():''}" placeholder="0" inputmode="numeric" style="text-align:right;" ${editAttr}/></div></div>`;}
       function fixedRow(k){const v=temp.fixedExpenses[k];return `<div class="fixed-row"><div class="fixed-top"><div class="fixed-title">${miniIcon(FIXED_ICON[k]||'receipt')}<span class="label-text">${FIXED_LABELS[k]}</span></div><select class="field planner-fixed-method mini-method" data-key="${k}" ${editAttr}>${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div><div class="fixed-mini-grid"><select class="field planner-fixed-day" data-key="${k}" ${editAttr}>${opt}</select><input class="field money-input planner-fixed-planned" data-key="${k}" value="${v.planned?Number(v.planned).toLocaleString():''}" placeholder="계획" inputmode="numeric" style="text-align:right;background:#f7f3ff;" ${editAttr}/><input class="field money-input planner-fixed-actual" data-key="${k}" value="${v.actual?Number(v.actual).toLocaleString():''}" placeholder="실제" inputmode="numeric" style="text-align:right;background:#fbfcfe;" ${editAttr}/></div></div>`;}
       function educationExtraRow(item){return `<div class="card" style="margin-bottom:7px;padding:10px;border-radius:16px;background:#fbfcfe;box-shadow:none;"><div class="education-extra-top"><input class="field edu-extra-desc" data-id="${item.id}" value="${esc(item.desc||'')}" placeholder="지출 명칭" ${editAttr}/><select class="field edu-extra-method mini-method" data-id="${item.id}" ${editAttr}>${PAYMENT_METHODS.map(m=>`<option value="${m}">${m}</option>`).join('')}</select>${state.plannerEditing?`<button class="btn btn-red remove-edu-extra-btn" data-id="${item.id}" style="min-height:34px;padding:7px 10px;">－</button>`:''}</div><div class="fixed-mini-grid" style="margin-top:7px;"><select class="field edu-extra-day" data-id="${item.id}" ${editAttr}>${opt}</select><input class="field money-input edu-extra-planned" data-id="${item.id}" value="${item.planned?Number(item.planned).toLocaleString():''}" placeholder="계획" inputmode="numeric" style="text-align:right;background:#f7f3ff;" ${editAttr}/><input class="field money-input edu-extra-actual" data-id="${item.id}" value="${item.actual?Number(item.actual).toLocaleString():''}" placeholder="실제" inputmode="numeric" style="text-align:right;background:#fbfcfe;" ${editAttr}/></div></div>`;}
       el.innerHTML = `
-        <div class="planner-toolbar"><div class="row"><div style="min-width:0;"><div style="font-size:18px;font-weight:900;">고정예산 관리</div><div style="font-size:11px;color:#7047d7;font-weight:900;margin-top:3px;">${state.currentMonth} 시트</div></div><div style="display:flex;gap:7px;">${state.plannerEditing?`<button id="plannerCancelBtn" class="btn btn-gray">취소</button><button id="plannerSaveBtn" class="btn btn-primary">저장</button>`:`<button id="plannerEditBtn" class="btn">수정</button>`}</div></div></div>
         <div class="planner-toolbar-spacer" aria-hidden="true"></div>
         <div class="page-pad" style="padding-bottom:230px;">
           <div class="card" style="padding:18px;">
